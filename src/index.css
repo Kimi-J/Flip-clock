@@ -435,6 +435,36 @@ body {
   animation: overlay-fade 0.35s ease both;
 }
 
+@keyframes panel-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+
+@keyframes overlay-fade-out {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+}
+
+.animate-panel-out {
+  animation: panel-slide-out 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.animate-overlay-out {
+  animation: overlay-fade-out 0.3s ease both;
+}
+
 .animate-toast {
   animation: toast-in 2.4s ease forwards;
 }

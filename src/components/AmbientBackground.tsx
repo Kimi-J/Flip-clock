@@ -34,7 +34,7 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
   const glowColorSoft = "color-mix(in srgb, var(--accent) 7%, transparent)";
 
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden" aria-hidden>
+    <div className="fixed inset-0 z-0 overflow-hidden" aria-hidden>
       {/* 基础径向渐变背景(所有模式共有) */}
       <div
         className="absolute inset-0"

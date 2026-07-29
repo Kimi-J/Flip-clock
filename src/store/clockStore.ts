@@ -98,7 +98,7 @@ export const THEME_OPTIONS: { value: ThemeName; label: string; swatch: string }[
   { value: "noir", label: "极简黑", swatch: "linear-gradient(135deg,#1a1a1a,#000000)" },
   { value: "pure", label: "极简白", swatch: "linear-gradient(135deg,#ededed,#ffffff)" },
   { value: "amber", label: "暖琥珀", swatch: "linear-gradient(135deg,#f4a261,#e76f51)" },
-  { value: "minimal", label: "晨雾白", swatch: "linear-gradient(135deg,#ffffff,#e0d9ca)" },
+  { value: "minimal", label: "晨雾白", swatch: "linear-gradient(135deg,#f5efe0,#e8dfc8)" },
   { value: "midnight", label: "午夜蓝", swatch: "linear-gradient(135deg,#5b9dff,#7850dc)" },
   { value: "matrix", label: "矩阵绿", swatch: "linear-gradient(135deg,#00ff88,#003322)" },
 ];

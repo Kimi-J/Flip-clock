@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import {
   BACKGROUND_OPTIONS,
@@ -24,14 +25,43 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     setBackgroundMode,
   } = useClockStore();
 
-  if (!open) return null;
+  // 延迟卸载 + transition 过渡(打开/关闭都有平滑动画)
+  // render: 是否挂载 DOM;shown: 是否处于可见态(触发 transition)
+  const [render, setRender] = useState(open);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRender(true);
+      // 下一帧再激活 shown,让浏览器先渲染初始(opacity:0)态,从而触发过渡
+      const raf = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(raf);
+    } else if (render) {
+      setShown(false);
+      const t = window.setTimeout(() => setRender(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [open, render]);
+
+  if (!render) return null;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end" role="dialog" aria-modal="true" aria-label="设置">
-      <div className="absolute inset-0 animate-overlay-in" onClick={onClose} style={{ background: "rgba(0,0,0,0.35)" }} />
+      <div
+        className="absolute inset-0 transition-opacity duration-300 ease-out"
+        onClick={onClose}
+        style={{
+          background: "rgba(0,0,0,0.35)",
+          opacity: shown ? 1 : 0,
+        }}
+      />
       <aside
-        className="relative h-full w-[340px] max-w-[88vw] animate-panel-in glass-panel overflow-y-auto"
-        style={{ borderLeft: "1px solid var(--panel-border)" }}
+        className="relative h-full w-[340px] max-w-[88vw] glass-panel overflow-y-auto transition-all duration-300 ease-out"
+        style={{
+          borderLeft: "1px solid var(--panel-border)",
+          opacity: shown ? 1 : 0,
+          transform: shown ? "translateX(0)" : "translateX(40px)",
+        }}
       >
         <header className="sticky top-0 flex items-center justify-between px-6 py-5" style={{ background: "var(--panel-bg)", borderBottom: "1px solid var(--panel-border)" }}>
           <h2 className="text-sm tracking-[0.3em] uppercase" style={{ color: "var(--text-primary)", fontFamily: '"Oswald",sans-serif' }}>

@@ -114,7 +114,7 @@ export default function Home() {
       />
 
       {/* 时钟舞台 */}
-      <div className="relative h-full w-full flex flex-col items-center justify-center select-none">
+      <div className="relative z-10 h-full w-full flex flex-col items-center justify-center select-none">
         <div
           className="animate-fade-in-up flex items-end justify-center"
           style={
