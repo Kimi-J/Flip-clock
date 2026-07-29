@@ -1,0 +1,466 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================== 主题变量 ==================== */
+:root {
+  /* Amber 主题(默认)- 暖琥珀 */
+  --bg-from: #0a0a0f;
+  --bg-via: #14141f;
+  --bg-to: #1a1320;
+  --bg-glow-1: rgba(244, 162, 97, 0.12);
+  --bg-glow-2: rgba(231, 111, 81, 0.08);
+  --card-from: #2a2230;
+  --card-to: #1c1620;
+  --card-top-shine: rgba(255, 255, 255, 0.06);
+  --card-bottom-shade: rgba(0, 0, 0, 0.35);
+  --divider: rgba(0, 0, 0, 0.55);
+  --seam: var(--bg-via);
+  --digit: #f4e4c1;
+  --digit-shadow: rgba(0, 0, 0, 0.5);
+  --accent: #f4a261;
+  --accent-soft: rgba(244, 162, 97, 0.18);
+  --text-primary: #e8dcc4;
+  --text-secondary: rgba(232, 220, 196, 0.55);
+  --text-muted: rgba(232, 220, 196, 0.32);
+  --panel-bg: rgba(20, 18, 26, 0.72);
+  --panel-border: rgba(244, 162, 97, 0.18);
+  --noise-opacity: 0.04;
+}
+
+[data-theme="minimal"] {
+  --bg-from: #f4f1ea;
+  --bg-via: #ebe6db;
+  --bg-to: #e0d9ca;
+  --bg-glow-1: rgba(120, 100, 80, 0.08);
+  --bg-glow-2: rgba(80, 70, 60, 0.05);
+  --card-from: #ffffff;
+  --card-to: #f0ebe0;
+  --card-top-shine: rgba(255, 255, 255, 0.8);
+  --card-bottom-shade: rgba(0, 0, 0, 0.08);
+  --divider: rgba(0, 0, 0, 0.12);
+  --seam: var(--bg-via);
+  --digit: #2a2620;
+  --digit-shadow: rgba(0, 0, 0, 0.12);
+  --accent: #c97b3e;
+  --accent-soft: rgba(201, 123, 62, 0.12);
+  --text-primary: #2a2620;
+  --text-secondary: rgba(42, 38, 32, 0.55);
+  --text-muted: rgba(42, 38, 32, 0.3);
+  --panel-bg: rgba(255, 252, 245, 0.82);
+  --panel-border: rgba(42, 38, 32, 0.12);
+  --noise-opacity: 0.025;
+}
+
+[data-theme="midnight"] {
+  --bg-from: #050a18;
+  --bg-via: #0a1530;
+  --bg-to: #050818;
+  --bg-glow-1: rgba(56, 132, 255, 0.14);
+  --bg-glow-2: rgba(120, 80, 220, 0.1);
+  --card-from: #131e3a;
+  --card-to: #0a1428;
+  --card-top-shine: rgba(120, 180, 255, 0.1);
+  --card-bottom-shade: rgba(0, 0, 0, 0.45);
+  --divider: rgba(0, 0, 0, 0.6);
+  --seam: var(--bg-via);
+  --digit: #c8e0ff;
+  --digit-shadow: rgba(0, 0, 0, 0.5);
+  --accent: #5b9dff;
+  --accent-soft: rgba(91, 157, 255, 0.18);
+  --text-primary: #d0e0f5;
+  --text-secondary: rgba(208, 224, 245, 0.55);
+  --text-muted: rgba(208, 224, 245, 0.32);
+  --panel-bg: rgba(10, 20, 40, 0.78);
+  --panel-border: rgba(91, 157, 255, 0.2);
+  --noise-opacity: 0.035;
+}
+
+[data-theme="matrix"] {
+  --bg-from: #000505;
+  --bg-via: #001210;
+  --bg-to: #000404;
+  --bg-glow-1: rgba(0, 255, 140, 0.12);
+  --bg-glow-2: rgba(0, 200, 100, 0.06);
+  --card-from: #021810;
+  --card-to: #000c06;
+  --card-top-shine: rgba(0, 255, 140, 0.08);
+  --card-bottom-shade: rgba(0, 0, 0, 0.5);
+  --divider: rgba(0, 0, 0, 0.6);
+  --seam: var(--bg-via);
+  --digit: #5cff9c;
+  --digit-shadow: rgba(0, 255, 100, 0.4);
+  --accent: #00ff88;
+  --accent-soft: rgba(0, 255, 136, 0.18);
+  --text-primary: #8effb8;
+  --text-secondary: rgba(142, 255, 184, 0.55);
+  --text-muted: rgba(142, 255, 184, 0.3);
+  --panel-bg: rgba(0, 16, 10, 0.82);
+  --panel-border: rgba(0, 255, 136, 0.22);
+  --noise-opacity: 0.04;
+}
+
+/* 极简黑:纯黑底、近黑灰卡片纯色、白字、无渐变无光晕 */
+[data-theme="noir"] {
+  --bg-from: #000000;
+  --bg-via: #000000;
+  --bg-to: #000000;
+  --bg-glow-1: transparent;
+  --bg-glow-2: transparent;
+  --card-from: #1a1a1a;
+  --card-to: #1a1a1a;
+  --card-top-shine: transparent;
+  --card-bottom-shade: transparent;
+  --divider: rgba(0, 0, 0, 0.7);
+  --seam: var(--bg-via);
+  --digit: #ffffff;
+  --digit-shadow: rgba(0, 0, 0, 0.6);
+  --accent: #e0e0e0;
+  --accent-soft: rgba(224, 224, 224, 0.14);
+  --text-primary: #f0f0f0;
+  --text-secondary: rgba(240, 240, 240, 0.55);
+  --text-muted: rgba(240, 240, 240, 0.3);
+  --panel-bg: rgba(15, 15, 15, 0.82);
+  --panel-border: rgba(255, 255, 255, 0.12);
+  --noise-opacity: 0;
+}
+
+/* 极简白:纯白底、浅灰卡片纯色、黑字、无渐变无光晕(极简黑的反相) */
+[data-theme="pure"] {
+  --bg-from: #ffffff;
+  --bg-via: #ffffff;
+  --bg-to: #ffffff;
+  --bg-glow-1: transparent;
+  --bg-glow-2: transparent;
+  --card-from: #ededed;
+  --card-to: #ededed;
+  --card-top-shine: transparent;
+  --card-bottom-shade: transparent;
+  --divider: rgba(0, 0, 0, 0.08);
+  --seam: var(--bg-via);
+  --digit: #1a1a1a;
+  --digit-shadow: rgba(0, 0, 0, 0.1);
+  --accent: #2a2a2a;
+  --accent-soft: rgba(42, 42, 42, 0.08);
+  --text-primary: #1a1a1a;
+  --text-secondary: rgba(26, 26, 26, 0.55);
+  --text-muted: rgba(26, 26, 26, 0.3);
+  --panel-bg: rgba(245, 245, 245, 0.82);
+  --panel-border: rgba(0, 0, 0, 0.1);
+  --noise-opacity: 0;
+}
+
+:root {
+  font-family: "Oswald", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-from);
+}
+
+body {
+  color: var(--text-primary);
+}
+
+/* ==================== 翻页卡核心样式 ==================== */
+/* 单片双面 180° 翻转:一个翻片绕中线连续翻转,正面显旧值上半,背面显新值下半 */
+.flip-unit {
+  position: relative;
+  display: inline-block;
+  width: var(--card-w, 1em);
+  height: var(--card-h, 1.5em);
+  perspective: 900px;
+  font-family: "Anton", "Bebas Neue", "Oswald", sans-serif;
+  font-size: var(--card-font, 1em);
+  vertical-align: top;
+}
+
+/* 静态卡(上下两半,始终在位) */
+.flip-static {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--card-from), var(--card-to));
+}
+
+.flip-static--top {
+  top: 0;
+  border-radius: 0.08em 0.08em 0 0;
+  box-shadow: inset 0 0.04em 0.08em var(--card-top-shine);
+}
+
+.flip-static--bottom {
+  bottom: 0;
+  border-radius: 0 0 0.08em 0.08em;
+  box-shadow: inset 0 -0.04em 0.08em var(--card-bottom-shade);
+}
+
+/* 极简黑/极简白专属:卡片接近接缝处两侧向内收缩,形成瓶颈凹口 */
+/* 凹口:每侧宽 8%(卡宽),深 12%(卡高),直角缺口 */
+[data-theme="noir"] .flip-static--top,
+[data-theme="pure"] .flip-static--top {
+  clip-path: polygon(
+    0% 0%, 100% 0%,
+    100% 88%, 92% 100%, 8% 100%, 0% 88%
+  );
+}
+[data-theme="noir"] .flip-static--bottom,
+[data-theme="pure"] .flip-static--bottom {
+  clip-path: polygon(
+    0% 100%, 100% 100%,
+    100% 12%, 92% 0%, 8% 0%, 0% 12%
+  );
+}
+/* 翻片正面(上半位置)凹口在底边 */
+[data-theme="noir"] .flip-leaf__face--front,
+[data-theme="pure"] .flip-leaf__face--front {
+  clip-path: polygon(
+    0% 0%, 100% 0%,
+    100% 88%, 92% 100%, 8% 100%, 0% 88%
+  );
+}
+/* 翻片背面(下半位置)凹口在顶边 */
+[data-theme="noir"] .flip-leaf__face--back,
+[data-theme="pure"] .flip-leaf__face--back {
+  clip-path: polygon(
+    0% 100%, 100% 100%,
+    100% 12%, 92% 0%, 8% 0%, 0% 12%
+  );
+}
+
+/* 接缝:独立伪元素叠加在中线,背景色,3px 高,置于翻片之上确保始终遮盖 */
+.flip-unit::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 3px;
+  background: var(--seam);
+  transform: translateY(-50%);
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* 静态卡数字:高度 = 整卡高度(card-h),贴顶/贴底定位以露出半边;
+   line-height 必须等于高度,字形才能垂直居中(不能用 %,% 是相对字号) */
+.flip-static__digit {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--card-h, 1.5em);
+  line-height: var(--card-h, 1.5em);
+  text-align: center;
+  color: var(--digit);
+  text-shadow: 0 0.04em 0.08em var(--digit-shadow);
+  font-family: "Anton", "Bebas Neue", "Oswald", sans-serif;
+}
+
+.flip-static--top .flip-static__digit {
+  top: 0; /* 露出数字上半 */
+}
+
+.flip-static--bottom .flip-static__digit {
+  bottom: 0; /* 露出数字下半 */
+}
+
+/* 翻片(叶子):单片,绕下边缘(中线)翻转 0 → 180deg */
+.flip-leaf {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  transform-origin: bottom center;
+  transform-style: preserve-3d;
+  z-index: 10;
+}
+
+.flip-leaf.is-flipping {
+  animation: leaf-flip 0.6s cubic-bezier(0.32, 0.04, 0.36, 1) forwards;
+}
+
+/* 翻片从上半位置连续翻转到下半位置,顶边向后向下倒 */
+@keyframes leaf-flip {
+  0% {
+    transform: rotateX(0deg);
+  }
+  100% {
+    transform: rotateX(180deg);
+  }
+}
+
+/* 翻片两面 */
+.flip-leaf__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--card-from), var(--card-to));
+}
+
+/* 正面:0° 时朝向观众,位于上半,显示旧值上半 */
+.flip-leaf__face--front {
+  border-radius: 0.08em 0.08em 0 0;
+  box-shadow: inset 0 0.04em 0.08em var(--card-top-shine);
+}
+
+/* 背面:预翻转 180°,翻片转到 180° 时朝向观众,位于下半,显示新值下半 */
+.flip-leaf__face--back {
+  transform: rotateX(180deg);
+  border-radius: 0 0 0.08em 0.08em;
+  box-shadow: inset 0 -0.04em 0.08em var(--card-bottom-shade);
+}
+
+/* 翻片数字:与静态卡同理,高度 = 整卡高度,正面贴顶(旧值上半),背面贴底(新值下半) */
+.flip-leaf__digit {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: var(--card-h, 1.5em);
+  line-height: var(--card-h, 1.5em);
+  text-align: center;
+  color: var(--digit);
+  text-shadow: 0 0.04em 0.08em var(--digit-shadow);
+  font-family: "Anton", "Bebas Neue", "Oswald", sans-serif;
+}
+
+.flip-leaf__face--front .flip-leaf__digit {
+  top: 0;
+}
+
+.flip-leaf__face--back .flip-leaf__digit {
+  bottom: 0;
+}
+
+/* ==================== 通用动画 ==================== */
+@keyframes glow-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(4%, -3%) scale(1.08);
+  }
+  66% {
+    transform: translate(-3%, 4%) scale(0.95);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes glow-drift-slow {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-5%, 3%) scale(1.12);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(6px);
+  }
+}
+
+@keyframes toast-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  15%, 85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-panel-in {
+  animation: panel-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-overlay-in {
+  animation: overlay-fade 0.35s ease both;
+}
+
+.animate-toast {
+  animation: toast-in 2.4s ease forwards;
+}
+
+/* ==================== 滚动条隐藏 ==================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 3px;
+}
+
+/* ==================== 工具类 ==================== */
+.glass-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.noise-layer {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: var(--noise-opacity);
+}
