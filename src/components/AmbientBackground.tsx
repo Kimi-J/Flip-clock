@@ -44,43 +44,70 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
         }}
       />
 
-      {/* 极光:3 层光晕漂移 */}
+      {/* 极光:垂直光幕叠加,极光色谱(翠绿/青/紫/粉),blur + skew 流动波动 */}
       {mode === "aurora" && (
         <>
+          {/* 主光带:翠绿→青,左侧 */}
           <div
-            className="absolute rounded-full"
+            className="absolute"
             style={{
-              width: "60vmax",
-              height: "60vmax",
-              left: "5%",
-              top: "0%",
-              background: `radial-gradient(circle, ${glowColor} 0%, transparent 65%)`,
-              filter: "blur(70px)",
-              animation: "glow-drift 24s ease-in-out infinite",
+              width: "34%",
+              height: "85%",
+              left: "4%",
+              top: "-5%",
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(0,255,157,0.55) 35%, rgba(0,212,255,0.5) 65%, transparent 100%)",
+              filter: "blur(50px)",
+              transformOrigin: "top center",
+              animation: "aurora-wave-a 20s ease-in-out infinite",
+              opacity: 0.55,
             }}
           />
+          {/* 中光带:青→紫,中部偏左 */}
           <div
-            className="absolute rounded-full"
+            className="absolute"
             style={{
-              width: "50vmax",
-              height: "50vmax",
-              right: "5%",
-              bottom: "0%",
-              background: `radial-gradient(circle, ${glowColorSoft} 0%, transparent 65%)`,
-              filter: "blur(80px)",
-              animation: "glow-drift-slow 30s ease-in-out infinite",
-            }}
-          />
-          <div
-            className="absolute rounded-full"
-            style={{
-              width: "40vmax",
-              height: "40vmax",
-              left: "35%",
-              top: "45%",
-              background: `radial-gradient(circle, ${glowColorSoft} 0%, transparent 65%)`,
+              width: "26%",
+              height: "78%",
+              left: "33%",
+              top: "-3%",
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(0,212,255,0.45) 30%, rgba(168,85,247,0.5) 70%, transparent 100%)",
               filter: "blur(60px)",
-              animation: "glow-drift 20s ease-in-out infinite reverse",
+              transformOrigin: "top center",
+              animation: "aurora-wave-b 25s ease-in-out infinite",
+              opacity: 0.5,
+            }}
+          />
+          {/* 右光带:紫→粉,右侧 */}
+          <div
+            className="absolute"
+            style={{
+              width: "30%",
+              height: "72%",
+              left: "63%",
+              top: "-2%",
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(168,85,247,0.45) 35%, rgba(236,72,153,0.45) 70%, transparent 100%)",
+              filter: "blur(55px)",
+              transformOrigin: "top center",
+              animation: "aurora-wave-c 22s ease-in-out infinite",
+              opacity: 0.5,
+            }}
+          />
+          {/* 底部弥散宽幕:翠绿,呼吸 */}
+          <div
+            className="absolute"
+            style={{
+              width: "60%",
+              height: "45%",
+              left: "20%",
+              bottom: "-10%",
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(0,255,157,0.35) 50%, transparent 100%)",
+              filter: "blur(80px)",
+              animation: "aurora-breathe 28s ease-in-out infinite",
+              opacity: 0.4,
             }}
           />
         </>

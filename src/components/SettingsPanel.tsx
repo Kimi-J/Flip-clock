@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import {
   BACKGROUND_OPTIONS,
@@ -29,13 +29,21 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   // render: 是否挂载 DOM;shown: 是否处于可见态(触发 transition)
   const [render, setRender] = useState(open);
   const [shown, setShown] = useState(false);
+  const rafCleanup = useRef<number | null>(null);
 
   useEffect(() => {
     if (open) {
       setRender(true);
-      // 下一帧再激活 shown,让浏览器先渲染初始(opacity:0)态,从而触发过渡
-      const raf = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(raf);
+      // 双 rAF:第一帧提交初始态(opacity:0),第二帧再激活 shown 触发过渡
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => setShown(true));
+        // 保存 raf2 用于清理(挂到闭包外的 ref)
+        rafCleanup.current = raf2;
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        if (rafCleanup.current) cancelAnimationFrame(rafCleanup.current);
+      };
     } else if (render) {
       setShown(false);
       const t = window.setTimeout(() => setRender(false), 300);
