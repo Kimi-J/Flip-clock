@@ -173,6 +173,17 @@ body {
   color: var(--text-primary);
 }
 
+/* ==================== 滑块样式 ==================== */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
 /* ==================== 翻页卡核心样式 ==================== */
 /* 单片双面 180° 翻转:一个翻片绕中线连续翻转,正面显旧值上半,背面显新值下半 */
 .flip-unit {

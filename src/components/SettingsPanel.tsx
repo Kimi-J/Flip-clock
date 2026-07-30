@@ -30,8 +30,10 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
   const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
   const [ssStatus, setSsStatus] = useState<string | null>(null);
+  const [ssTimeout, setSsTimeout] = useState<number>(300);
+  const timeoutDebounce = useRef<number>(0);
 
-  // 初始化时检查屏保注册状态
+  // 初始化时检查屏保注册状态和超时时间
   useEffect(() => {
     if (!isTauri || !open) return;
     invoke<boolean>("is_screensaver_registered")
@@ -40,6 +42,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           setScreensaverEnabled(registered);
         }
       })
+      .catch(() => {});
+    invoke<number>("get_screensaver_timeout")
+      .then(setSsTimeout)
       .catch(() => {});
   }, [open]);
 
@@ -62,6 +67,17 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         })
         .catch((e) => setSsStatus(`关闭失败: ${e}`));
     }
+  };
+
+  const handleTimeoutChange = (minutes: number) => {
+    setSsTimeout(minutes * 60);
+    clearTimeout(timeoutDebounce.current);
+    // 防抖:拖动结束后才调用 SystemParametersInfoW,避免频繁广播 WM_SETTINGCHANGE 卡死主线程
+    timeoutDebounce.current = window.setTimeout(() => {
+      if (isTauri) {
+        invoke("set_screensaver_timeout", { seconds: minutes * 60 }).catch(() => {});
+      }
+    }, 500);
   };
 
   // 延迟卸载 + transition 过渡(打开/关闭都有平滑动画)
@@ -187,9 +203,33 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{ssStatus}</p>
             )}
             {screensaverEnabled && (
-              <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                系统空闲后将自动启动翻页时钟屏保,移动鼠标或按任意键退出。
-              </p>
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: "var(--text-primary)" }}>等待时间</span>
+                    <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {Math.floor(ssTimeout / 60)} 分钟
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={60}
+                    step={1}
+                    value={Math.floor(ssTimeout / 60)}
+                    onChange={(e) => handleTimeoutChange(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                    style={{ background: "var(--panel-border)" }}
+                  />
+                  <div className="flex justify-between text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    <span>1 分钟</span>
+                    <span>60 分钟</span>
+                  </div>
+                </div>
+                <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                  系统空闲后将自动启动翻页时钟屏保,移动鼠标或按任意键退出。
+                </p>
+              </>
             )}
           </Section>
 

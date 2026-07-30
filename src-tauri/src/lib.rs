@@ -95,6 +95,79 @@ fn is_screensaver_registered() -> bool {
     screensaver::is_registered()
 }
 
+/// Windows 屏保超时时间(秒)
+/// 使用 SystemParametersInfoW(SPI_GETSCREENSAVETIMEOUT / SPI_SETSCREENSAVETIMEOUT)
+/// 参考: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfow
+#[cfg(windows)]
+mod win_api {
+    #[link(name = "user32")]
+    extern "system" {
+        fn SystemParametersInfoW(
+            ui_action: u32,
+            ui_param: u32,
+            pv_param: *mut std::ffi::c_void,
+            f_win_ini: u32,
+        ) -> i32;
+    }
+
+    const SPI_GETSCREENSAVETIMEOUT: u32 = 0x000E;
+    const SPI_SETSCREENSAVETIMEOUT: u32 = 0x000F;
+    const SPIF_UPDATEINIFILE: u32 = 0x01;
+
+    pub fn get_timeout() -> Result<u32, String> {
+        let mut value: u32 = 0;
+        let ok = unsafe {
+            SystemParametersInfoW(
+                SPI_GETSCREENSAVETIMEOUT,
+                0,
+                &mut value as *mut u32 as *mut _,
+                0,
+            )
+        };
+        if ok == 0 {
+            Err("获取屏保超时失败".to_string())
+        } else {
+            Ok(value)
+        }
+    }
+
+    pub fn set_timeout(seconds: u32) -> Result<(), String> {
+        let ok = unsafe {
+            SystemParametersInfoW(
+                SPI_SETSCREENSAVETIMEOUT,
+                seconds,
+                std::ptr::null_mut(),
+                SPIF_UPDATEINIFILE,
+            )
+        };
+        if ok == 0 {
+            Err("设置屏保超时失败".to_string())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[cfg(not(windows))]
+mod win_api {
+    pub fn get_timeout() -> Result<u32, String> {
+        Err("仅支持 Windows".to_string())
+    }
+    pub fn set_timeout(_seconds: u32) -> Result<(), String> {
+        Err("仅支持 Windows".to_string())
+    }
+}
+
+#[tauri::command]
+fn get_screensaver_timeout() -> Result<u32, String> {
+    win_api::get_timeout()
+}
+
+#[tauri::command]
+fn set_screensaver_timeout(seconds: u32) -> Result<(), String> {
+    win_api::set_timeout(seconds)
+}
+
 /// 检测启动模式:解析 Windows 屏保命令行参数
 /// /s — 屏保运行态(全屏展示,任意输入退出)
 /// /c — 配置模式(控制面板"设置"按钮),直接退出,配置由主应用设置面板处理
@@ -184,6 +257,8 @@ pub fn run() {
             register_screensaver,
             unregister_screensaver,
             is_screensaver_registered,
+            get_screensaver_timeout,
+            set_screensaver_timeout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
