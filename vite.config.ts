@@ -4,6 +4,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 相对路径,确保 WebView2 本地文件加载正确
+  base: './',
   build: {
     sourcemap: 'hidden',
   },
