@@ -1,0 +1,9 @@
+# 国内镜像源：cargo crates 走清华 sparse 索引
+[source.crates-io]
+replace-with = "tuna"
+
+[source.tuna]
+registry = "sparse+https://mirrors.tuna.tsinghua.edu.cn/crates.io-index/"
+
+[net]
+git-fetch-with-cli = true
