@@ -146,6 +146,87 @@ mod win_api {
             Ok(())
         }
     }
+
+    // ===== 显示器枚举(用于屏保多显示器支持) =====
+    // 使用 EnumDisplayMonitors + GetMonitorInfoW 获取每个显示器的物理坐标和尺寸。
+    // 物理坐标不受 DPI 缩放影响,可直接配合 SetWindowPos 精确定位到指定显示器。
+
+    #[repr(C)]
+    struct Rect {
+        left: i32,
+        top: i32,
+        right: i32,
+        bottom: i32,
+    }
+
+    #[repr(C)]
+    struct MonitorInfo {
+        cb_size: u32,
+        rc_monitor: Rect,
+        rc_work: Rect,
+        flags: u32,
+    }
+
+    /// 单个显示器的物理矩形(单位:像素)
+    pub struct MonitorRect {
+        pub x: i32,
+        pub y: i32,
+        pub width: i32,
+        pub height: i32,
+    }
+
+    type MonitorEnumProc = unsafe extern "system" fn(
+        hmonitor: *mut std::ffi::c_void,
+        hdc: *mut std::ffi::c_void,
+        lprc: *mut Rect,
+        lparam: isize,
+    ) -> i32;
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn EnumDisplayMonitors(
+            hdc: *mut std::ffi::c_void,
+            lprc_clip: *const Rect,
+            lpfn_enum: MonitorEnumProc,
+            dw_data: isize,
+        ) -> i32;
+
+        fn GetMonitorInfoW(hmonitor: *mut std::ffi::c_void, lpmi: *mut MonitorInfo) -> i32;
+    }
+
+    unsafe extern "system" fn enum_proc(
+        hmonitor: *mut std::ffi::c_void,
+        _hdc: *mut std::ffi::c_void,
+        _lprc: *mut Rect,
+        lparam: isize,
+    ) -> i32 {
+        let mut mi: MonitorInfo = std::mem::zeroed();
+        mi.cb_size = std::mem::size_of::<MonitorInfo>() as u32;
+        if GetMonitorInfoW(hmonitor, &mut mi) != 0 {
+            let vec = &mut *(lparam as *mut Vec<MonitorRect>);
+            vec.push(MonitorRect {
+                x: mi.rc_monitor.left,
+                y: mi.rc_monitor.top,
+                width: mi.rc_monitor.right - mi.rc_monitor.left,
+                height: mi.rc_monitor.bottom - mi.rc_monitor.top,
+            });
+        }
+        1 // 继续枚举
+    }
+
+    /// 枚举所有显示器的物理矩形
+    pub fn enum_monitors() -> Vec<MonitorRect> {
+        let mut monitors: Vec<MonitorRect> = Vec::new();
+        unsafe {
+            EnumDisplayMonitors(
+                std::ptr::null_mut(),
+                std::ptr::null(),
+                enum_proc,
+                &mut monitors as *mut Vec<MonitorRect> as isize,
+            );
+        }
+        monitors
+    }
 }
 
 #[cfg(not(windows))]
@@ -166,6 +247,12 @@ fn get_screensaver_timeout() -> Result<u32, String> {
 #[tauri::command]
 fn set_screensaver_timeout(seconds: u32) -> Result<(), String> {
     win_api::set_timeout(seconds)
+}
+
+/// 退出屏保:任意窗口检测到输入即调用,退出整个进程(一次性关闭所有显示器上的窗口)
+#[tauri::command]
+fn exit_saver(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 /// 检测启动模式:解析 Windows 屏保命令行参数
@@ -230,26 +317,96 @@ pub fn run() {
             }
 
             // 动态创建窗口:不在 tauri.conf.json 中定义,避免 /c /p 模式闪现窗口
-            let mut builder = tauri::WebviewWindowBuilder::new(
-                app,
-                "main",
-                tauri::WebviewUrl::App("index.html".into()),
-            )
-            .title("Flip Clock · 翻页时钟")
-            .inner_size(1280.0, 800.0)
-            .fullscreen(true)
-            .decorations(false)
-            .resizable(true)
-            .center()
-            .background_color(tauri::webview::Color(10, 10, 15, 255))
-            .initialization_script(init_script);
+            if is_saver {
+                // 屏保模式:为每个显示器创建独立窗口,各自铺满对应屏幕。
+                // 用 EnumDisplayMonitors 枚举物理矩形,build 后用 set_position/set_inner_size
+                // (物理坐标)精确定位,规避多显示器混合 DPI 下的逻辑坐标换算问题。
+                #[cfg(windows)]
+                {
+                    let monitors = win_api::enum_monitors();
+                    if monitors.is_empty() {
+                        // 枚举失败时回退到单窗口全屏
+                        let mut builder = tauri::WebviewWindowBuilder::new(
+                            app,
+                            "saver-0",
+                            tauri::WebviewUrl::App("index.html".into()),
+                        )
+                        .title("Flip Clock · 翻页时钟")
+                        .fullscreen(true)
+                        .decorations(false)
+                        .always_on_top(true)
+                        .background_color(tauri::webview::Color(10, 10, 15, 255))
+                        .initialization_script(init_script);
+                        builder = builder.data_directory(webview_data_dir.clone());
+                        builder.build()?;
+                    } else {
+                        for (i, mon) in monitors.iter().enumerate() {
+                            let label = format!("saver-{}", i);
+                            let mut builder = tauri::WebviewWindowBuilder::new(
+                                app,
+                                label,
+                                tauri::WebviewUrl::App("index.html".into()),
+                            )
+                            .title("Flip Clock · 翻页时钟")
+                            .decorations(false)
+                            .always_on_top(true)
+                            .resizable(false)
+                            // 先隐藏,定位到目标显示器后再 show,避免窗口在主屏闪现后跳移
+                            .visible(false)
+                            .background_color(tauri::webview::Color(10, 10, 15, 255))
+                            .initialization_script(init_script)
+                            // 临时尺寸,set_inner_size 会用物理尺寸覆盖
+                            .inner_size(800.0, 600.0);
+                            builder = builder.data_directory(webview_data_dir.clone());
+                            let window = builder.build()?;
+                            // 精确定位到对应显示器(物理坐标,不受 DPI 缩放影响)
+                            window.set_position(tauri::PhysicalPosition::new(mon.x, mon.y))?;
+                            window.set_size(tauri::PhysicalSize::new(
+                                mon.width as u32,
+                                mon.height as u32,
+                            ))?;
+                            window.show()?;
+                        }
+                    }
+                }
+                #[cfg(not(windows))]
+                {
+                    tauri::WebviewWindowBuilder::new(
+                        app,
+                        "saver-0",
+                        tauri::WebviewUrl::App("index.html".into()),
+                    )
+                    .title("Flip Clock · 翻页时钟")
+                    .fullscreen(true)
+                    .decorations(false)
+                    .always_on_top(true)
+                    .background_color(tauri::webview::Color(10, 10, 15, 255))
+                    .initialization_script(init_script)
+                    .build()?;
+                }
+            } else {
+                // 普通模式(双击打开):单个全屏窗口,只在主屏显示
+                let mut builder = tauri::WebviewWindowBuilder::new(
+                    app,
+                    "main",
+                    tauri::WebviewUrl::App("index.html".into()),
+                )
+                .title("Flip Clock · 翻页时钟")
+                .inner_size(1280.0, 800.0)
+                .fullscreen(true)
+                .decorations(false)
+                .resizable(true)
+                .center()
+                .background_color(tauri::webview::Color(10, 10, 15, 255))
+                .initialization_script(init_script);
 
-            #[cfg(windows)]
-            {
-                builder = builder.data_directory(webview_data_dir.clone());
+                #[cfg(windows)]
+                {
+                    builder = builder.data_directory(webview_data_dir.clone());
+                }
+
+                builder.build()?;
             }
-
-            builder.build()?;
 
             Ok(())
         })
@@ -259,6 +416,7 @@ pub fn run() {
             is_screensaver_registered,
             get_screensaver_timeout,
             set_screensaver_timeout,
+            exit_saver,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

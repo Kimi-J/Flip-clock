@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import AmbientBackground from "@/components/AmbientBackground";
 import ControlBar from "@/components/ControlBar";
 import FlipCardGroup from "@/components/FlipCardGroup";
@@ -75,7 +76,8 @@ export default function Home({ saverMode = false }: HomeProps) {
 
   const exitSaver = () => {
     if (isTauri) {
-      getCurrentWindow().close().catch(() => {});
+      // 屏保多窗口模式:退出整个进程,一次性关闭所有显示器上的窗口
+      invoke("exit_saver").catch(() => {});
     } else {
       window.close();
     }
