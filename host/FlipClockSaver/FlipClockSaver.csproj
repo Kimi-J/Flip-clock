@@ -4,6 +4,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- 启用 WinForms:用于屏保预览模式(/p),WPF 窗口无法 SetParent 到预览容器 -->
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <AssemblyName>FlipClockSaver</AssemblyName>
     <RootNamespace>FlipClockSaver</RootNamespace>

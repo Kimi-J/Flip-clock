@@ -105,12 +105,21 @@ export default function Home({ saverMode = false }: HomeProps) {
 
   // 翻页卡尺寸:基于视口动态计算,在原值基础上整体放大约 2 倍(受视口约束)
   // cardH 加大使数字占卡片纵向约 60%(字形约 0.7em / 1.2em ≈ 58%)
-  const cardFont = showSeconds ? "min(20vw, 34vh)" : "min(28vw, 46vh)";
+  // 加 max 下限:屏保预览窗口(控制面板小显示器)视口极小,避免时间缩到不可读
+  const cardFont = showSeconds ? "max(32px, min(20vw, 34vh))" : "max(48px, min(28vw, 46vh))";
   const cardW = showSeconds ? "0.62em" : "0.62em";
   const cardH = "1.2em";
 
   return (
-    <main className="relative h-full w-full overflow-hidden" style={{ color: "var(--text-primary)" }}>
+    <main
+      className="relative h-full w-full overflow-hidden"
+      style={
+        {
+          color: "var(--text-primary)",
+          "--card-font": cardFont,
+        } as React.CSSProperties
+      }
+    >
       <AmbientBackground mode={backgroundMode} />
 
       {!saverMode && (
@@ -128,7 +137,6 @@ export default function Home({ saverMode = false }: HomeProps) {
           className="animate-fade-in-up flex items-end justify-center"
           style={
             {
-              "--card-font": cardFont,
               "--card-w": cardW,
               "--card-h": cardH,
               fontSize: cardFont,
