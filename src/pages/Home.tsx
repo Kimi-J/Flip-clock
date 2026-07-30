@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
 import AmbientBackground from "@/components/AmbientBackground";
 import ControlBar from "@/components/ControlBar";
 import FlipCardGroup from "@/components/FlipCardGroup";
@@ -15,7 +14,6 @@ export default function Home() {
   const { is24Hour, showSeconds, showInfoBar, backgroundMode, theme, toggleSeconds, setTheme } = useClockStore();
   const time = useClockTime(is24Hour);
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [closeBtnVisible, setCloseBtnVisible] = useState(false);
@@ -52,40 +50,9 @@ export default function Home() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  // 全屏状态监听:Tauri 使用原生窗口全屏,浏览器回退到 Fullscreen API
-  useEffect(() => {
-    if (!isTauri) {
-      const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-      document.addEventListener("fullscreenchange", onFsChange);
-      return () => document.removeEventListener("fullscreenchange", onFsChange);
-    }
-    // Tauri: 监听窗口尺寸变化(全屏切换会触发),并检查初始状态
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    const checkFs = () => getCurrentWindow().isFullscreen().then(setIsFullscreen).catch(() => {});
-    listen("tauri://resize", checkFs).then((fn) => {
-      if (cancelled) fn();
-      else unlisten = fn;
-    });
-    checkFs();
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
-
-  const toggleFullscreen = () => {
+  const handleMinimize = () => {
     if (isTauri) {
-      getCurrentWindow()
-        .isFullscreen()
-        .then((fs) => getCurrentWindow().setFullscreen(!fs).then(() => setIsFullscreen(!fs)))
-        .catch(() => {});
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      } else {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
+      getCurrentWindow().minimize().catch(() => {});
     }
   };
 
@@ -109,10 +76,6 @@ export default function Home() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       switch (e.key.toLowerCase()) {
-        case "f":
-          toggleFullscreen();
-          showToast("全屏已切换");
-          break;
         case "s":
           setSettingsOpen((v) => !v);
           break;
@@ -149,8 +112,7 @@ export default function Home() {
       <AmbientBackground mode={backgroundMode} />
 
       <ControlBar
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
+        onMinimize={handleMinimize}
         onOpenSettings={() => setSettingsOpen(true)}
         onClose={handleClose}
         visible={controlsVisible || settingsOpen}

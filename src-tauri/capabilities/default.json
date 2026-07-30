@@ -8,6 +8,6 @@
   "permissions": [
     "core:default",
     "core:window:allow-close",
-    "core:window:allow-set-fullscreen"
+    "core:window:allow-minimize"
   ]
 }

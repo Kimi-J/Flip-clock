@@ -1,8 +1,7 @@
-import { Maximize, Minimize, Settings, X } from "lucide-react";
+import { Minimize, Settings, X } from "lucide-react";
 
 interface ControlBarProps {
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
+  onMinimize: () => void;
   onOpenSettings: () => void;
   onClose: () => void;
   visible: boolean;
@@ -10,8 +9,7 @@ interface ControlBarProps {
 }
 
 export default function ControlBar({
-  isFullscreen,
-  onToggleFullscreen,
+  onMinimize,
   onOpenSettings,
   onClose,
   visible,
@@ -36,14 +34,14 @@ export default function ControlBar({
         <X size={16} />
       </button>
 
-      {/* 全屏 + 设置:鼠标活动时显示 */}
+      {/* 最小化 + 设置:鼠标活动时显示 */}
       <div
         className="fixed top-5 right-[68px] z-30 flex items-center gap-2 transition-opacity duration-500"
         style={{ opacity: visible ? 1 : 0, pointerEvents: visible ? "auto" : "none" }}
       >
         <button
-          onClick={onToggleFullscreen}
-          aria-label={isFullscreen ? "退出全屏" : "全屏"}
+          onClick={onMinimize}
+          aria-label="最小化"
           className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110"
           style={{
             color: "var(--text-secondary)",
@@ -52,7 +50,7 @@ export default function ControlBar({
             backdropFilter: "blur(12px)",
           }}
         >
-          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+          <Minimize size={16} />
         </button>
         <button
           onClick={onOpenSettings}
