@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { X } from "lucide-react";
 import {
   BACKGROUND_OPTIONS,
@@ -18,12 +19,50 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     showSeconds,
     showInfoBar,
     backgroundMode,
+    screensaverEnabled,
     setTheme,
     toggle24Hour,
     toggleSeconds,
     toggleInfoBar,
     setBackgroundMode,
+    setScreensaverEnabled,
   } = useClockStore();
+
+  const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  const [ssStatus, setSsStatus] = useState<string | null>(null);
+
+  // 初始化时检查屏保注册状态
+  useEffect(() => {
+    if (!isTauri || !open) return;
+    invoke<boolean>("is_screensaver_registered")
+      .then((registered) => {
+        if (registered !== screensaverEnabled) {
+          setScreensaverEnabled(registered);
+        }
+      })
+      .catch(() => {});
+  }, [open]);
+
+  const handleScreensaverToggle = () => {
+    if (!isTauri) return;
+    const next = !screensaverEnabled;
+    setSsStatus(null);
+    if (next) {
+      invoke<string>("register_screensaver")
+        .then(() => {
+          setScreensaverEnabled(true);
+          setSsStatus("屏保已启用");
+        })
+        .catch((e) => setSsStatus(`启用失败: ${e}`));
+    } else {
+      invoke("unregister_screensaver")
+        .then(() => {
+          setScreensaverEnabled(false);
+          setSsStatus("屏保已关闭");
+        })
+        .catch((e) => setSsStatus(`关闭失败: ${e}`));
+    }
+  };
 
   // 延迟卸载 + transition 过渡(打开/关闭都有平滑动画)
   // render: 是否挂载 DOM;shown: 是否处于可见态(触发 transition)
@@ -137,13 +176,26 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </Section>
 
+          {/* 屏幕保护程序 */}
+          <Section title="屏幕保护程序">
+            <ToggleRow
+              label="启用屏幕保护程序"
+              checked={screensaverEnabled}
+              onChange={handleScreensaverToggle}
+            />
+            {ssStatus && (
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>{ssStatus}</p>
+            )}
+            {screensaverEnabled && (
+              <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                系统空闲后将自动启动翻页时钟屏保,移动鼠标或按任意键退出。
+              </p>
+            )}
+          </Section>
+
           {/* 快捷键提示 */}
           <Section title="快捷键">
             <ul className="space-y-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-              <li className="flex justify-between">
-                <span>全屏</span>
-                <Kbd>F</Kbd>
-              </li>
               <li className="flex justify-between">
                 <span>设置</span>
                 <Kbd>S</Kbd>

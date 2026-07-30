@@ -30,7 +30,10 @@ export default function InfoBar({ date, is24Hour }: InfoBarProps) {
   const greet = greeting(date.getHours());
 
   return (
-    <div className="flex flex-col items-center gap-3 select-none" style={{ fontSize: "clamp(12px, 1.4vw, 18px)" }}>
+    <div
+      className="flex flex-col items-center gap-3 select-none"
+      style={{ fontSize: "clamp(6px, calc(var(--card-font, 100px) * 0.048), 18px)" }}
+    >
       <div className="flex items-center gap-4" style={{ fontFamily: '"Oswald","Noto Sans SC",sans-serif' }}>
         <span style={{ color: "var(--text-secondary)", letterSpacing: "0.12em" }}>{dateText}</span>
         <span

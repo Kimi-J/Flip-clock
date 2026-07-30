@@ -1,114 +1,57 @@
-# Flip Clock · 全屏翻页时钟
+# React + TypeScript + Vite
 
-一个排版美观、动画流畅的全屏翻页时钟。基于 React + TypeScript + Vite 构建，使用 Zustand 管理状态，Tailwind CSS 处理样式。核心是真实机械翻页效果的 3D 翻片动画，配合多套主题与氛围背景，适用于桌面全屏展示、沉浸式时间显示等场景。
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 功能特性
+Currently, two official plugins are available:
 
-### 翻页动画
-- 真实 3D 翻片：单个叶片元素绕水平中线连续翻转 180°，一气呵成，非两段拼接
-- 双面结构：正面显示旧数字上半、背面预旋转 180° 显示新数字下半，靠 `backface-visibility` + `preserve-3d` 实现「翻过中线才显背面」
-- 600ms 贝塞尔缓动，落地与静态卡无缝衔接
-- 接缝独立伪元素覆盖，颜色固定为背景色，任何翻转阶段都不会串色
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-### 6 套主题
-| 主题 | 风格 |
-|------|------|
-| 极简黑 | 纯黑底 + 近黑灰纯色卡片 + 白字，瓶颈凹口造型 |
-| 极简白 | 纯白底 + 浅灰纯色卡片 + 黑字，瓶颈凹口造型 |
-| 暖琥珀 | 深棕底 + 暖色卡片渐变 + 金黄数字 |
-| 晨雾白 | 米色底 + 暖白卡片 + 深灰字 |
-| 午夜蓝 | 深蓝底 + 蓝色卡片 + 冷光数字 |
-| 矩阵绿 | 黑底 + 绿色卡片 + 荧光绿数字 |
+## Expanding the ESLint configuration
 
-极简黑/极简白的卡片在接近接缝处两侧有棱角分明的向内收窄凹口，形成瓶颈造型，其余主题保持矩形。
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-### 3 种背景效果
-- **极简**（默认）：仅基础径向渐变，纯净无装饰
-- **极光**：4 条垂直光幕叠加（翠绿→青→紫→粉极光色谱），skew 变形 + 大幅位移产生丝绸波动感，边缘 blur 弥散
-- **星空**：60 个闪烁星点带光晕扩散，配淡光晕增加深度，颜色跟随主题强调色
-
-### 信息条与交互
-- 日期、星期胶囊、时段问候语（7 段动态）
-- 24/12 小时制切换、秒显隐、信息条显隐、背景模式切换
-- 毛玻璃设置面板，从右侧滑入/滑出（打开关闭均有 300ms 平滑过渡）
-- 鼠标静止 2.6s 自动隐藏控制条
-
-### 快捷键
-| 键 | 功能 |
-|----|------|
-| `F` | 切换全屏 |
-| `S` | 打开/关闭设置 |
-| `T` | 循环切换主题 |
-| `Space` | 显示/隐藏秒 |
-| `Esc` | 关闭设置面板 |
-
-### 数据持久化
-所有设置（主题、制式、显示项、背景模式）通过 localStorage 持久化，刷新后保留。
-
-## 技术栈
-
-- **React 18** + **TypeScript 5.8**：组件化开发，强类型保障
-- **Vite 6**：开发服务器与构建工具，HMR 热更新
-- **Zustand 5**：轻量状态管理，store 持久化
-- **Tailwind CSS 3.4**：原子化样式，配合 CSS 变量实现主题切换
-- **lucide-react**：图标库（设置、关闭、全屏等）
-
-## 项目架构
-
-```
-src/
-├── pages/
-│   └── Home.tsx              # 主页面，组合各组件，管理全屏/设置面板/控制条显隐/快捷键
-├── components/
-│   ├── FlipCard.tsx          # 单个翻片：单片 180° 翻转 + 双面结构
-│   ├── FlipCardGroup.tsx     # 一组翻片（如小时十位+个位），处理数字变化触发翻转
-│   ├── AmbientBackground.tsx # 氛围背景层：极简/极光/星空三种模式
-│   ├── InfoBar.tsx           # 信息条：日期、星期、问候语
-│   ├── ControlBar.tsx        # 顶部控制条：全屏、设置按钮
-│   └── SettingsPanel.tsx     # 设置面板：主题/制式/显示项/背景，含开关/关闭动画
-├── store/
-│   └── clockStore.ts         # Zustand store：主题、制式、显示项、背景模式 + localStorage 持久化
-├── hooks/
-│   └── useClockTime.ts       # 时钟 hook：每秒更新时间，返回时/分/秒/日期
-├── lib/
-│   └── utils.ts              # 工具函数（cn 类名合并）
-├── App.tsx                   # 根组件，路由入口
-├── main.tsx                  # 应用入口
-└── index.css                 # 全局样式：主题 CSS 变量、翻页卡片样式、动画 keyframes
+```js
+export default tseslint.config({
+  extends: [
+    // Remove ...tseslint.configs.recommended and replace with this
+    ...tseslint.configs.recommendedTypeChecked,
+    // Alternatively, use this for stricter rules
+    ...tseslint.configs.strictTypeChecked,
+    // Optionally, add this for stylistic rules
+    ...tseslint.configs.stylisticTypeChecked,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
 
-## 核心实现说明
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-### 翻片动画
-单个 `.flip-leaf` 元素，`transform-origin: bottom center`，`transform: rotateX(0 → 180deg)` 一个动画连续翻转。元素内含正反两个 `.flip-leaf__face`：
-- 正面（`.flip-leaf__face--front`）显示旧值上半
-- 背面（`.flip-leaf__face--back`）预旋转 180°，显示新值下半
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-静态上半卡在翻转开始时立即变新值（被翻片正面遮挡），翻片 0°→90° 观众看旧值，90°→180° 翻片翻过中线露出新值，动画结束后移除翻片。
-
-### 主题系统
-通过 `data-theme` 属性切换 CSS 变量（`--bg-*`、`--card-*`、`--digit`、`--accent` 等），所有组件读取变量渲染。极简黑/极简白的瓶颈凹口通过 `clip-path: polygon()` 实现，仅对这两个主题生效。
-
-### 接缝防串色
-接缝用独立伪元素 `.flip-unit::after` 叠加在中线，`z-index: 15` 高于翻片（10），颜色为 `var(--seam)`（背景色）。无论翻片如何翻转，接缝始终在最上层覆盖翻片边缘，杜绝数字色渗出。
-
-## 开发
-
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 类型检查
-npm run check
-
-# 构建生产版本
-npm run build
-
-# 预览生产构建
-npm run preview
+export default tseslint.config({
+  extends: [
+    // other configs...
+    // Enable lint rules for React
+    reactX.configs['recommended-typescript'],
+    // Enable lint rules for React DOM
+    reactDom.configs.recommended,
+  ],
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
 ```
-
-开发服务器默认运行在 http://localhost:5173/。

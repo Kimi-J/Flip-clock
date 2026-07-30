@@ -10,18 +10,7 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Flip Clock · 翻页时钟",
-        "width": 1280,
-        "height": 800,
-        "resizable": true,
-        "maximized": false,
-        "decorations": false,
-        "center": true,
-        "fullscreen": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

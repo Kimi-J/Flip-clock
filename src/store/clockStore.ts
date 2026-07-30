@@ -9,6 +9,7 @@ export interface ClockSettings {
   showSeconds: boolean;
   showInfoBar: boolean;
   backgroundMode: BackgroundMode;
+  screensaverEnabled: boolean;
 }
 
 interface ClockStore extends ClockSettings {
@@ -17,6 +18,7 @@ interface ClockStore extends ClockSettings {
   toggleSeconds: () => void;
   toggleInfoBar: () => void;
   setBackgroundMode: (m: BackgroundMode) => void;
+  setScreensaverEnabled: (v: boolean) => void;
 }
 
 const STORAGE_KEY = "flip-clock-settings-v1";
@@ -44,6 +46,7 @@ export const useClockStore = create<ClockStore>((set) => ({
   showSeconds: saved.showSeconds ?? true,
   showInfoBar: saved.showInfoBar ?? true,
   backgroundMode: saved.backgroundMode ?? "minimal",
+  screensaverEnabled: saved.screensaverEnabled ?? false,
   setTheme: (theme) => {
     set({ theme });
     persist(getSnapshot({ theme }));
@@ -73,6 +76,10 @@ export const useClockStore = create<ClockStore>((set) => ({
     set({ backgroundMode });
     persist(getSnapshot({ backgroundMode }));
   },
+  setScreensaverEnabled: (screensaverEnabled) => {
+    set({ screensaverEnabled });
+    persist(getSnapshot({ screensaverEnabled }));
+  },
 }));
 
 function getSnapshot(patch: Partial<ClockSettings>): ClockSettings {
@@ -83,6 +90,7 @@ function getSnapshot(patch: Partial<ClockSettings>): ClockSettings {
     showSeconds: patch.showSeconds ?? s.showSeconds,
     showInfoBar: patch.showInfoBar ?? s.showInfoBar,
     backgroundMode: patch.backgroundMode ?? s.backgroundMode,
+    screensaverEnabled: patch.screensaverEnabled ?? s.screensaverEnabled,
   };
 }
 

@@ -22,3 +22,50 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ============================
+# C# / .NET 宿主程序产物
+# ============================
+# 编译输出
+[Bb]in/
+[Oo]bj/
+# 发布目录(由 build-screensaver.ps1 生成)
+[Pp]ublish/
+# 单文件打包临时目录
+*.publish/
+# Visual Studio 用户文件
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+# .NET CLI 项目锁文件
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ============================
+# 安装包产物
+# ============================
+# Inno Setup 生成的安装包
+FlipClockSaver-Setup.exe
+# 编译中间文件
+*.tmp
+Setup.e32
+Setup.exe
+
+# ============================
+# 系统与缓存
+# ============================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+# WebView2 运行时缓存(宿主程序运行后生成)
+*.WebView2/
+EBWebView/

@@ -4,19 +4,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 相对路径,确保 WebView2 本地文件加载正确
+  base: './',
   build: {
     sourcemap: 'hidden',
   },
-  // Tauri: 固定端口、不清屏、忽略 src-tauri 目录变更
-  clearScreen: false,
-  server: {
-    port: 1420,
-    strictPort: true,
-    watch: {
-      ignored: ['**/src-tauri/**'],
-    },
-  },
-  envPrefix: ['VITE_', 'TAURI_ENV_*'],
   plugins: [
     react({
       babel: {
