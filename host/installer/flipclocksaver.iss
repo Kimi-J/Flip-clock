@@ -32,6 +32,8 @@ DefaultGroupName={#MyAppDisplayName}
 DisableProgramGroupPage=yes
 OutputDir=..\..
 OutputBaseFilename=FlipClockSaver-Setup
+; 安装包图标(使用项目根目录的 icon.ico)
+SetupIconFile=..\..\icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

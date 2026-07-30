@@ -8,6 +8,8 @@
     <AssemblyName>FlipClockSaver</AssemblyName>
     <RootNamespace>FlipClockSaver</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 应用图标:嵌入到 exe/scr 的 PE 资源 -->
+    <ApplicationIcon>..\..\icon.ico</ApplicationIcon>
     <!-- 独立发布:消除 .NET 运行时依赖,全新电脑可直接运行 -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
