@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import AmbientBackground from "@/components/AmbientBackground";
 import ControlBar from "@/components/ControlBar";
 import FlipCardGroup from "@/components/FlipCardGroup";
@@ -7,6 +9,8 @@ import SettingsPanel from "@/components/SettingsPanel";
 import { useClockTime } from "@/hooks/useClockTime";
 import { useClockStore } from "@/store/clockStore";
 
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
 export default function Home() {
   const { is24Hour, showSeconds, showInfoBar, backgroundMode, theme, toggleSeconds, setTheme } = useClockStore();
   const time = useClockTime(is24Hour);
@@ -14,23 +18,31 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [closeBtnVisible, setCloseBtnVisible] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const hideTimer = useRef<number>(0);
   const toastTimer = useRef<number>(0);
 
-  // 鼠标静止后隐藏控制条
+  // 鼠标静止后隐藏控制条;鼠标移入右上角时显示关闭按钮
   useEffect(() => {
-    const onMove = () => {
+    const onMove = (e: MouseEvent) => {
+      setControlsVisible(true);
+      clearTimeout(hideTimer.current);
+      hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+      // 鼠标在右上角 120×120 区域内时显示关闭按钮
+      setCloseBtnVisible(e.clientX > window.innerWidth - 120 && e.clientY < 120);
+    };
+    const onTouch = () => {
       setControlsVisible(true);
       clearTimeout(hideTimer.current);
       hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
     };
     window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchstart", onMove);
+    window.addEventListener("touchstart", onTouch);
     hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
     return () => {
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchstart", onMove);
+      window.removeEventListener("touchstart", onTouch);
       clearTimeout(hideTimer.current);
     };
   }, []);
@@ -40,18 +52,48 @@ export default function Home() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  // 全屏状态监听
+  // 全屏状态监听:Tauri 使用原生窗口全屏,浏览器回退到 Fullscreen API
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
+    if (!isTauri) {
+      const onFsChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+      document.addEventListener("fullscreenchange", onFsChange);
+      return () => document.removeEventListener("fullscreenchange", onFsChange);
+    }
+    // Tauri: 监听窗口尺寸变化(全屏切换会触发),并检查初始状态
+    let unlisten: (() => void) | undefined;
+    let cancelled = false;
+    const checkFs = () => getCurrentWindow().isFullscreen().then(setIsFullscreen).catch(() => {});
+    listen("tauri://resize", checkFs).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    checkFs();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    if (isTauri) {
+      getCurrentWindow()
+        .isFullscreen()
+        .then((fs) => getCurrentWindow().setFullscreen(!fs).then(() => setIsFullscreen(!fs)))
+        .catch(() => {});
     } else {
-      document.documentElement.requestFullscreen().catch(() => {});
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      } else {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  const handleClose = () => {
+    if (isTauri) {
+      getCurrentWindow().close().catch(() => {});
+    } else {
+      window.close();
     }
   };
 
@@ -110,7 +152,9 @@ export default function Home() {
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         onOpenSettings={() => setSettingsOpen(true)}
+        onClose={handleClose}
         visible={controlsVisible || settingsOpen}
+        closeVisible={closeBtnVisible}
       />
 
       {/* 时钟舞台 */}
