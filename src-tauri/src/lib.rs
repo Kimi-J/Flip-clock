@@ -16,11 +16,20 @@ mod screensaver {
 
     /// 注册屏保:复制 exe 为 .scr,写入注册表
     pub fn register() -> Result<String, String> {
-        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let exe = std::env::current_exe().map_err(|e| format!("获取程序路径失败: {e}"))?;
         let scr_path = get_scr_path()?;
 
         // 复制 exe → .scr(Windows 屏保本质就是改后缀的 exe)
-        fs::copy(&exe, &scr_path).map_err(|e| format!("复制 .scr 失败: {e}"))?;
+        fs::copy(&exe, &scr_path).map_err(|e| {
+            if e.raw_os_error() == Some(5) {
+                format!(
+                    "复制屏保文件失败: 拒绝访问。程序安装目录(可能是 Program Files)无写权限,\n\
+                     请以管理员身份运行,或重新安装到用户可写目录。 (原始错误: {e})"
+                )
+            } else {
+                format!("复制屏保文件失败: {e}")
+            }
+        })?;
 
         let scr_str = scr_path.to_string_lossy().to_string();
 
@@ -30,9 +39,34 @@ mod screensaver {
             .open_subkey_with_flags("Control Panel\\Desktop", KEY_SET_VALUE)
             .map_err(|e| format!("打开注册表失败: {e}"))?;
 
-        desktop
-            .set_value("SCRNSAVE.EXE", &scr_str)
-            .map_err(|e| format!("写入 SCRNSAVE.EXE 失败: {e}"))?;
+        // 写入 SCRNSAVE.EXE(屏保程序路径)
+        if let Err(e) = desktop.set_value("SCRNSAVE.EXE", &scr_str) {
+            // 诊断:写 SCRNSAVE.EXE 失败时,尝试写一个测试值,区分根因
+            //   - 测试值可写     → 仅 SCRNSAVE.EXE 被保护(GPO / 安全软件)
+            //   - 测试值也不可写 → 整个子键无写权限(目录/权限问题)
+            let test_ok = desktop.set_value("FlipClockTest", &"1").is_ok();
+            let _ = desktop.delete_value("FlipClockTest"); // 清理测试值
+            let hint = if test_ok {
+                concat!(
+                    "写入屏保注册表被拒绝:SCRNSAVE.EXE 值受系统保护,但其他注册表项可正常写入。\n",
+                    "可能原因:\n",
+                    "1) 企业域组策略(GPO)锁定了屏保设置,请联系 IT 管理员;\n",
+                    "2) 杀毒软件/安全软件拦截了对屏保注册表的修改,请临时关闭后重试。\n",
+                    "可手动将本软件安装目录下的 FlipClock.scr 文件复制到 ",
+                    r"C:\Windows\System32",
+                    " 目录并在「设置 → 个性化 → 锁屏界面 → 屏幕保护程序」中选择 Flip Clock。"
+                )
+            } else {
+                concat!(
+                    "写入注册表被拒绝:当前用户对该注册表项无写权限。\n",
+                    "可能原因:\n",
+                    "1) 程序安装在被保护目录,请以管理员身份运行;\n",
+                    "2) 系统策略限制了注册表写入。"
+                )
+            };
+            return Err(format!("{hint} (原始错误: {e})"));
+        }
+
         desktop
             .set_value("ScreenSaveActive", &"1")
             .map_err(|e| format!("写入 ScreenSaveActive 失败: {e}"))?;
