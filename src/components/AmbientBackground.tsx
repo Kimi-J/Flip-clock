@@ -44,22 +44,22 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
         }}
       />
 
-      {/* 极光:垂直光幕叠加,极光色谱(翠绿/青/紫/粉),blur + skew 流动波动 */}
+      {/* 极光:垂直光幕叠加,极光色谱(翠绿/青/紫/粉),radial-gradient 自柔光 + skew 流动波动 */}
       {mode === "aurora" && (
         <>
-          {/* 主光带:翠绿→青,左侧 */}
+          {/* 主光带:翠绿→青,左侧。radial-gradient 中心向边缘渐隐,无需 blur 即可柔光 */}
           <div
             className="absolute"
             style={{
-              width: "34%",
-              height: "85%",
-              left: "4%",
-              top: "-5%",
+              width: "45%",
+              height: "95%",
+              left: "0%",
+              top: "-8%",
               background:
-                "linear-gradient(180deg, transparent 0%, rgba(0,255,157,0.55) 35%, rgba(0,212,255,0.5) 65%, transparent 100%)",
-              filter: "blur(50px)",
+                "radial-gradient(ellipse 60% 50% at 50% 45%, rgba(0,255,157,0.55) 0%, rgba(0,212,255,0.4) 45%, transparent 75%)",
               transformOrigin: "top center",
               animation: "aurora-wave-a 20s ease-in-out infinite",
+              willChange: "transform, opacity",
               opacity: 0.55,
             }}
           />
@@ -67,15 +67,15 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
           <div
             className="absolute"
             style={{
-              width: "26%",
-              height: "78%",
-              left: "33%",
-              top: "-3%",
+              width: "38%",
+              height: "90%",
+              left: "28%",
+              top: "-6%",
               background:
-                "linear-gradient(180deg, transparent 0%, rgba(0,212,255,0.45) 30%, rgba(168,85,247,0.5) 70%, transparent 100%)",
-              filter: "blur(60px)",
+                "radial-gradient(ellipse 55% 50% at 50% 50%, rgba(0,212,255,0.45) 0%, rgba(168,85,247,0.4) 50%, transparent 75%)",
               transformOrigin: "top center",
               animation: "aurora-wave-b 25s ease-in-out infinite",
+              willChange: "transform, opacity",
               opacity: 0.5,
             }}
           />
@@ -83,15 +83,15 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
           <div
             className="absolute"
             style={{
-              width: "30%",
-              height: "72%",
-              left: "63%",
-              top: "-2%",
+              width: "42%",
+              height: "85%",
+              left: "58%",
+              top: "-5%",
               background:
-                "linear-gradient(180deg, transparent 0%, rgba(168,85,247,0.45) 35%, rgba(236,72,153,0.45) 70%, transparent 100%)",
-              filter: "blur(55px)",
+                "radial-gradient(ellipse 55% 50% at 50% 48%, rgba(168,85,247,0.45) 0%, rgba(236,72,153,0.4) 50%, transparent 75%)",
               transformOrigin: "top center",
               animation: "aurora-wave-c 22s ease-in-out infinite",
+              willChange: "transform, opacity",
               opacity: 0.5,
             }}
           />
@@ -99,14 +99,14 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
           <div
             className="absolute"
             style={{
-              width: "60%",
-              height: "45%",
-              left: "20%",
-              bottom: "-10%",
+              width: "70%",
+              height: "55%",
+              left: "15%",
+              bottom: "-15%",
               background:
-                "linear-gradient(180deg, transparent 0%, rgba(0,255,157,0.35) 50%, transparent 100%)",
-              filter: "blur(80px)",
+                "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(0,255,157,0.35) 0%, transparent 70%)",
               animation: "aurora-breathe 28s ease-in-out infinite",
+              willChange: "transform, opacity",
               opacity: 0.4,
             }}
           />

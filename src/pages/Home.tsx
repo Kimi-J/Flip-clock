@@ -114,7 +114,7 @@ export default function Home({ saverMode = false }: HomeProps) {
           setSettingsOpen((v) => !v);
           break;
         case "t": {
-          const order: typeof theme[] = ["amber", "minimal", "midnight", "matrix", "noir", "pure"];
+          const order: typeof theme[] = ["amber", "minimal", "midnight", "matrix", "noir", "pure", "voxel", "synthwave", "ink"];
           const next = order[(order.indexOf(theme) + 1) % order.length];
           setTheme(next);
           showToast(`主题: ${labelOf(next)}`);
@@ -138,9 +138,16 @@ export default function Home({ saverMode = false }: HomeProps) {
   // 翻页卡尺寸:基于视口动态计算,在原值基础上整体放大约 2 倍(受视口约束)
   // cardH 加大使数字占卡片纵向约 60%(字形约 0.7em / 1.2em ≈ 58%)
   // 加 max 下限:屏保预览窗口(控制面板小显示器)视口极小,避免时间缩到不可读
-  const cardFont = showSeconds ? "max(32px, min(20vw, 34vh))" : "max(48px, min(28vw, 46vh))";
-  const cardW = showSeconds ? "0.62em" : "0.62em";
-  const cardH = "1.2em";
+  // voxel 主题:字号等比缩小 25%(Press Start 2P 视觉偏大),但卡片尺寸保持不变
+  //   → cardW/cardH 改用 px(基于 cardFontBase 计算),不随字号缩放;
+  //   → cardFont 单独缩小,只影响数字大小;
+  //   → 其他主题 cardW/cardH 仍用 em(随字号等比缩放,保持原行为)
+  const voxelScale = theme === "voxel" ? 0.88 : 1;
+  const cardFontBase = showSeconds ? "max(32px, min(20vw, 34vh))" : "max(48px, min(28vw, 46vh))";
+  const cardFont = voxelScale !== 1 ? `calc(${cardFontBase} * ${voxelScale})` : cardFontBase;
+  // voxel 用 px 绝对单位(基于未缩放的 cardFontBase),卡片尺寸保持和其他主题一致
+  const cardW = theme === "voxel" ? `calc(${cardFontBase} * 0.62)` : showSeconds ? "0.62em" : "0.62em";
+  const cardH = theme === "voxel" ? `calc(${cardFontBase} * 1.2)` : "1.2em";
 
   return (
     <main
@@ -238,6 +245,12 @@ function labelOf(theme: string): string {
       return "极简黑";
     case "pure":
       return "极简白";
+    case "voxel":
+      return "像素界";
+    case "synthwave":
+      return "霓虹波";
+    case "ink":
+      return "水墨韵";
     default:
       return theme;
   }

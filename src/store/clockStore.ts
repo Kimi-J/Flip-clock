@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure";
+export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink";
 export type BackgroundMode = "minimal" | "aurora" | "starry";
 
 export interface ClockSettings {
@@ -109,6 +109,9 @@ export const THEME_OPTIONS: { value: ThemeName; label: string; swatch: string }[
   { value: "minimal", label: "晨雾白", swatch: "linear-gradient(135deg,#f5efe0,#e8dfc8)" },
   { value: "midnight", label: "午夜蓝", swatch: "linear-gradient(135deg,#5b9dff,#7850dc)" },
   { value: "matrix", label: "矩阵绿", swatch: "linear-gradient(135deg,#00ff88,#003322)" },
+  { value: "voxel", label: "像素界", swatch: "linear-gradient(135deg,#3a1f5c,#00f0ff)" },
+  { value: "synthwave", label: "霓虹波", swatch: "linear-gradient(135deg,#ff006e,#3a0ca3)" },
+  { value: "ink", label: "水墨韵", swatch: "linear-gradient(135deg,#e8e4dc,#2a2a2a)" },
 ];
 
 export const BACKGROUND_OPTIONS: { value: BackgroundMode; label: string }[] = [

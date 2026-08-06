@@ -150,6 +150,288 @@
   --noise-opacity: 0;
 }
 
+/* 方块世界:深紫矿洞底、霓虹青数字、品红强调、方块卡角 + 网格纹理 + 像素字体 */
+[data-theme="voxel"] {
+  --bg-from: #1a0e2e;
+  --bg-via: #0d0518;
+  --bg-to: #1a0e2e;
+  --bg-glow-1: rgba(0, 240, 255, 0.1);
+  --bg-glow-2: rgba(255, 46, 136, 0.08);
+  --card-from: #3a1f5c;
+  --card-to: #2a1342;
+  --card-top-shine: rgba(0, 240, 255, 0.18);
+  --card-bottom-shade: rgba(0, 0, 0, 0.5);
+  --divider: rgba(0, 0, 0, 0.7);
+  --seam: #0d0518;
+  --digit: #00f0ff;
+  --digit-shadow: rgba(0, 240, 255, 0.55);
+  --accent: #ff2e88;
+  --accent-with-bg: #ff2e88;
+  --accent-soft: rgba(255, 46, 136, 0.18);
+  --text-primary: #e0d4ff;
+  --text-secondary: rgba(224, 212, 255, 0.55);
+  --text-muted: rgba(224, 212, 255, 0.3);
+  --panel-bg: rgba(26, 14, 46, 0.88);
+  --panel-border: rgba(0, 240, 255, 0.25);
+  --noise-opacity: 0;
+  /* 像素字体覆盖:用 CSS 变量注入,优先级高于 .flip-unit 等硬编码的 Anton */
+  --voxel-font: "Press Start 2P", "Anton", monospace;
+}
+
+/* 方块世界专属:全局文字使用像素字体(面板、信息栏、Toast 等) */
+[data-theme="voxel"] body,
+[data-theme="voxel"] .settings-panel,
+[data-theme="voxel"] .info-bar,
+[data-theme="voxel"] .control-bar {
+  font-family: var(--voxel-font);
+}
+
+/* 方块世界专属:数字使用像素字体(覆盖 .flip-unit/.flip-static__digit/.flip-leaf__digit 硬编码的 Anton) */
+[data-theme="voxel"] .flip-unit,
+[data-theme="voxel"] .flip-static__digit,
+[data-theme="voxel"] .flip-leaf__digit {
+  font-family: var(--voxel-font) !important;
+}
+
+/* 方块世界专属:卡片去除圆角,改纯直角(像素风核心特征) */
+[data-theme="voxel"] .flip-static--top,
+[data-theme="voxel"] .flip-static--bottom,
+[data-theme="voxel"] .flip-leaf__face--front,
+[data-theme="voxel"] .flip-leaf__face--back {
+  border-radius: 0;
+}
+
+/* 方块世界专属:卡片右上角和左下角切方块(模拟方块世界的方块卡角,非圆角) */
+[data-theme="voxel"] .flip-static--top,
+[data-theme="voxel"] .flip-leaf__face--front {
+  clip-path: polygon(
+    0% 0%,
+    calc(100% - 10%) 0%,
+    100% 10%,
+    100% 100%,
+    0% 100%
+  );
+}
+[data-theme="voxel"] .flip-static--bottom,
+[data-theme="voxel"] .flip-leaf__face--back {
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% calc(100% - 10%),
+    calc(100% - 10%) 100%,
+    10% 100%,
+    0% calc(100% - 10%)
+  );
+}
+
+/* 方块世界专属:卡片叠加 8px 像素网格纹理(模拟方块材质) */
+[data-theme="voxel"] .flip-static,
+[data-theme="voxel"] .flip-leaf__face {
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 7px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0.2) 8px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 7px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0.2) 8px),
+    linear-gradient(180deg, var(--card-from), var(--card-to));
+}
+
+/* 方块世界专属:卡片顶边霓虹高光(2px 像素描边) */
+[data-theme="voxel"] .flip-static--top,
+[data-theme="voxel"] .flip-leaf__face--front {
+  box-shadow: inset 0 2px 0 0 var(--card-top-shine);
+}
+[data-theme="voxel"] .flip-static--bottom,
+[data-theme="voxel"] .flip-leaf__face--back {
+  box-shadow: inset 0 -2px 0 0 var(--card-bottom-shade);
+}
+
+/* 方块世界专属:数字霓虹像素发光(多层阶梯阴影) + 横向压缩适配卡片宽度 */
+[data-theme="voxel"] .flip-static__digit,
+[data-theme="voxel"] .flip-leaf__digit {
+  text-shadow:
+    0 0 2px var(--digit),
+    0 0 6px var(--digit-shadow),
+    2px 2px 0 rgba(0, 0, 0, 0.5),
+    -2px -2px 0 rgba(0, 0, 0, 0.3);
+  /* Press Start 2P 比 Anton 宽,横向压缩 75% 适配卡片宽度,略左移视觉居中 */
+  transform: scaleX(0.75) translateX(-15%);
+  transform-origin: center;
+}
+
+/* 方块世界专属:接缝加粗为 4px 像素分隔线,保持深色留空(用 --seam 而非 --digit) */
+[data-theme="voxel"] .flip-unit::after {
+  height: 4px;
+  background: var(--seam);
+}
+
+/* ==================== 合成波 ==================== */
+/* 80s 复古未来:深紫黑底 + 霓虹粉/青数字 + 透视网格地平线背景 + 扫描线纹理 */
+[data-theme="synthwave"] {
+  --bg-from: #1a0b2e;
+  --bg-via: #0d0420;
+  --bg-to: #2a0a3a;
+  --bg-glow-1: rgba(255, 0, 110, 0.15);
+  --bg-glow-2: rgba(0, 245, 255, 0.1);
+  --card-from: #2d1b4e;
+  --card-to: #1a0f33;
+  --card-top-shine: rgba(255, 0, 110, 0.3);
+  --card-bottom-shade: rgba(0, 0, 0, 0.55);
+  --divider: rgba(0, 0, 0, 0.7);
+  --seam: #0d0420;
+  --digit: #ff2e9a;
+  --digit-shadow: rgba(255, 0, 110, 0.7);
+  --accent: #00f5ff;
+  --accent-with-bg: #00f5ff;
+  --accent-soft: rgba(0, 245, 255, 0.18);
+  --text-primary: #ffb3d9;
+  --text-secondary: rgba(255, 179, 217, 0.55);
+  --text-muted: rgba(255, 179, 217, 0.3);
+  --panel-bg: rgba(26, 11, 46, 0.88);
+  --panel-border: rgba(255, 0, 110, 0.3);
+  --noise-opacity: 0;
+}
+
+/* 合成波专属:卡片叠加横向扫描线纹理(CRT 显示器质感) */
+[data-theme="synthwave"] .flip-static,
+[data-theme="synthwave"] .flip-leaf__face {
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 4px),
+    linear-gradient(180deg, var(--card-from), var(--card-to));
+}
+
+/* 合成波专属:卡片顶部霓虹粉高光 + 底部阴影 */
+[data-theme="synthwave"] .flip-static--top,
+[data-theme="synthwave"] .flip-leaf__face--front {
+  box-shadow: inset 0 2px 0 0 var(--card-top-shine);
+}
+[data-theme="synthwave"] .flip-static--bottom,
+[data-theme="synthwave"] .flip-leaf__face--back {
+  box-shadow: inset 0 -2px 0 0 var(--card-bottom-shade);
+}
+
+/* 合成波专属:数字霓虹发光(多层粉色光晕,模拟霓虹灯管) */
+[data-theme="synthwave"] .flip-static__digit,
+[data-theme="synthwave"] .flip-leaf__digit {
+  text-shadow:
+    0 0 4px var(--digit),
+    0 0 10px var(--digit-shadow),
+    0 0 20px var(--digit-shadow),
+    2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* 合成波专属:接缝加粗为 3px 霓虹粉分隔线 */
+[data-theme="synthwave"] .flip-unit::after {
+  height: 3px;
+  background: var(--digit);
+  opacity: 0.5;
+  box-shadow: 0 0 6px var(--digit-shadow);
+}
+
+/* ==================== 水墨韵 ==================== */
+/* 中国风:宣纸白底 + 纯水墨黑灰数字 + 飘逸不规则墨晕卡片 + 飞白笔触 + 无彩色 */
+[data-theme="ink"] {
+  --bg-from: #f4f1ea;
+  --bg-via: #e8e3d8;
+  --bg-to: #ddd6c6;
+  --bg-glow-1: rgba(40, 40, 40, 0.05);
+  --bg-glow-2: rgba(30, 30, 30, 0.03);
+  --card-from: #faf8f2;
+  --card-to: #ede8db;
+  --card-top-shine: rgba(255, 255, 255, 0.6);
+  --card-bottom-shade: rgba(40, 40, 40, 0.1);
+  --divider: rgba(40, 40, 40, 0.18);
+  --seam: var(--bg-via);
+  --digit: #1a1a1a;
+  --digit-shadow: rgba(20, 20, 20, 0.25);
+  --accent: #3a3a3a;
+  --accent-with-bg: #3a3a3a;
+  --accent-soft: rgba(58, 58, 58, 0.1);
+  --text-primary: #2a2a2a;
+  --text-secondary: rgba(60, 60, 60, 0.55);
+  --text-muted: rgba(60, 60, 60, 0.3);
+  --panel-bg: rgba(244, 241, 234, 0.92);
+  --panel-border: rgba(40, 40, 40, 0.18);
+  --noise-opacity: 0;
+}
+
+/* 水墨韵专属:卡片不规则墨晕纹理 + 飞白噪点(多层 radial-gradient 模拟浓淡墨色) */
+[data-theme="ink"] .flip-static,
+[data-theme="ink"] .flip-leaf__face {
+  background:
+    /* 右上角淡墨晕 */
+    radial-gradient(ellipse 45% 70% at 75% 25%, rgba(40, 40, 40, 0.12) 0%, transparent 55%),
+    /* 左下角浓墨晕 */
+    radial-gradient(ellipse 50% 65% at 25% 75%, rgba(20, 20, 20, 0.16) 0%, transparent 60%),
+    /* 中部淡墨过渡 */
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(60, 60, 60, 0.06) 0%, transparent 70%),
+    /* 飞白噪点纹理(模拟宣纸吸墨不均) */
+    repeating-radial-gradient(circle at 30% 40%, transparent 0, transparent 2px, rgba(40, 40, 40, 0.02) 2px, rgba(40, 40, 40, 0.02) 3px),
+    linear-gradient(180deg, var(--card-from), var(--card-to));
+}
+
+/* 水墨韵专属:卡片四周自然曲线(模拟毛笔手绘轮廓,接缝处波动较大,其余三边轻微波动) */
+[data-theme="ink"] .flip-static--top,
+[data-theme="ink"] .flip-leaf__face--front {
+  clip-path: polygon(
+    0% 0%,
+    20% 1.5%, 40% 0.5%, 60% 1.5%, 80% 0.5%,
+    100% 0%,
+    99% 20%, 100% 40%, 99% 60%, 100% 80%,
+    100% 95%,
+    82% 97%, 65% 94%, 50% 98%, 35% 94%, 18% 97%,
+    0% 95%,
+    1% 80%, 0% 60%, 1% 40%, 0% 20%
+  );
+}
+[data-theme="ink"] .flip-static--bottom,
+[data-theme="ink"] .flip-leaf__face--back {
+  clip-path: polygon(
+    0% 100%,
+    20% 98.5%, 40% 99.5%, 60% 98.5%, 80% 99.5%,
+    100% 100%,
+    99% 80%, 100% 60%, 99% 40%, 100% 20%,
+    100% 5%,
+    82% 3%, 65% 6%, 50% 2%, 35% 6%, 18% 3%,
+    0% 5%,
+    1% 20%, 0% 40%, 1% 60%, 0% 80%
+  );
+}
+
+/* 水墨韵专属:数字飞白笔触(多层阶梯阴影模拟毛笔枯笔) + 站酷庆科黄油体(粗体飘逸规整) */
+[data-theme="ink"] .flip-static__digit,
+[data-theme="ink"] .flip-leaf__digit {
+  font-family: "ZCOOL QingKe HuangYou", "Anton", sans-serif !important;
+  text-shadow:
+    1px 0 0 rgba(40, 40, 40, 0.12),
+    0 1px 0 rgba(40, 40, 40, 0.12),
+    2px 2px 1px rgba(40, 40, 40, 0.1),
+    -1px -1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* 水墨韵专属:卡片去圆角(毛笔手绘感) */
+[data-theme="ink"] .flip-static--top,
+[data-theme="ink"] .flip-static--bottom,
+[data-theme="ink"] .flip-leaf__face--front,
+[data-theme="ink"] .flip-leaf__face--back {
+  border-radius: 0;
+}
+
+/* 水墨韵专属:接缝用淡墨色,带轻微墨晕过渡 */
+[data-theme="ink"] .flip-unit::after {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(40, 40, 40, 0.15) 20%,
+    rgba(40, 40, 40, 0.25) 50%,
+    rgba(40, 40, 40, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+/* 水墨韵专属:卡片底部加淡墨积色(模拟墨色下沉) */
+[data-theme="ink"] .flip-static--bottom,
+[data-theme="ink"] .flip-leaf__face--back {
+  box-shadow: inset 0 -8px 16px -8px rgba(40, 40, 40, 0.15);
+}
+
 :root {
   font-family: "Oswald", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
