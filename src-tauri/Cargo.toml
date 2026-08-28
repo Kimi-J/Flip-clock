@@ -1,8 +1,8 @@
 [package]
 name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "2.1.0"
+description = "Flip Clock · 翻页时钟"
+authors = ["FlipClock"]
 license = ""
 repository = ""
 edition = "2021"

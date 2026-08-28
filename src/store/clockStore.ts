@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { emit } from "@tauri-apps/api/event";
 
 export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink";
 export type BackgroundMode = "minimal" | "aurora" | "starry";
@@ -12,6 +13,27 @@ export interface ClockSettings {
   screensaverEnabled: boolean;
 }
 
+const DEFAULTS: ClockSettings = {
+  theme: "amber",
+  is24Hour: true,
+  showSeconds: true,
+  showInfoBar: true,
+  backgroundMode: "minimal",
+  screensaverEnabled: false,
+};
+
+/** 部分设置补全为完整设置(缺省项回落默认值) */
+function applyDefaults(s: Partial<ClockSettings>): ClockSettings {
+  return {
+    theme: s.theme ?? DEFAULTS.theme,
+    is24Hour: s.is24Hour ?? DEFAULTS.is24Hour,
+    showSeconds: s.showSeconds ?? DEFAULTS.showSeconds,
+    showInfoBar: s.showInfoBar ?? DEFAULTS.showInfoBar,
+    backgroundMode: s.backgroundMode ?? DEFAULTS.backgroundMode,
+    screensaverEnabled: s.screensaverEnabled ?? DEFAULTS.screensaverEnabled,
+  };
+}
+
 interface ClockStore extends ClockSettings {
   setTheme: (t: ThemeName) => void;
   toggle24Hour: () => void;
@@ -19,6 +41,8 @@ interface ClockStore extends ClockSettings {
   toggleInfoBar: () => void;
   setBackgroundMode: (m: BackgroundMode) => void;
   setScreensaverEnabled: (v: boolean) => void;
+  /** 多窗口同步:用事件携带的最新快照(或 localStorage)恢复设置 */
+  rehydrate: (patch?: Partial<ClockSettings>) => void;
 }
 
 const STORAGE_KEY = "flip-clock-settings-v1";
@@ -41,12 +65,7 @@ function loadSettings(): Partial<ClockSettings> {
 const saved = loadSettings();
 
 export const useClockStore = create<ClockStore>((set) => ({
-  theme: saved.theme ?? "amber",
-  is24Hour: saved.is24Hour ?? true,
-  showSeconds: saved.showSeconds ?? true,
-  showInfoBar: saved.showInfoBar ?? true,
-  backgroundMode: saved.backgroundMode ?? "minimal",
-  screensaverEnabled: saved.screensaverEnabled ?? false,
+  ...applyDefaults(saved),
   setTheme: (theme) => {
     set({ theme });
     persist(getSnapshot({ theme }));
@@ -80,6 +99,9 @@ export const useClockStore = create<ClockStore>((set) => ({
     set({ screensaverEnabled });
     persist(getSnapshot({ screensaverEnabled }));
   },
+  rehydrate: (patch) => {
+    set(applyDefaults(patch ?? loadSettings()));
+  },
 }));
 
 function getSnapshot(patch: Partial<ClockSettings>): ClockSettings {
@@ -99,6 +121,10 @@ function persist(s: ClockSettings) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
   } catch {
     /* 忽略写入失败 */
+  }
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    // 多窗口同步:广播给同进程所有窗口(事件携带完整快照,接收方直接应用;自身接收幂等,无回环)
+    emit("settings-sync", s).catch(() => {});
   }
 }
 

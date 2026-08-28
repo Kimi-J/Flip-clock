@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { X } from "lucide-react";
 import {
   BACKGROUND_OPTIONS,
@@ -10,6 +11,17 @@ import {
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
+}
+
+/** 显示器信息(Rust list_monitors 命令返回,物理坐标) */
+interface MonitorDto {
+  id: string;
+  name: string;
+  is_primary: boolean;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
@@ -32,6 +44,51 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [ssStatus, setSsStatus] = useState<string | null>(null);
   const [ssTimeout, setSsTimeout] = useState<number>(300);
   const timeoutDebounce = useRef<number>(0);
+
+  // ===== 显示位置(多显示器) =====
+  const [monitors, setMonitors] = useState<MonitorDto[]>([]);
+  const [selectedMonitors, setSelectedMonitors] = useState<string[]>([]);
+  const [monStatus, setMonStatus] = useState<string | null>(null);
+
+  // 打开时加载显示器列表与勾选状态;监听 Rust 端拓扑变化事件实时刷新
+  useEffect(() => {
+    if (!isTauri || !open) return;
+    const refresh = () => {
+      invoke<MonitorDto[]>("list_monitors").then(setMonitors).catch(() => {});
+      invoke<string[]>("get_selected_monitors").then(setSelectedMonitors).catch(() => {});
+    };
+    refresh();
+    let un: (() => void) | undefined;
+    listen("monitors-changed", refresh)
+      .then((fn) => {
+        un = fn;
+      })
+      .catch(() => {});
+    return () => {
+      un?.();
+    };
+  }, [open, isTauri]);
+
+  // 实际生效的勾选:持久化选中 ∩ 在线显示器;全失效时回退主屏(与 Rust 端窗口逻辑一致)
+  const effectiveSelected = useMemo(() => {
+    const online = monitors.filter((m) => selectedMonitors.includes(m.id)).map((m) => m.id);
+    if (online.length > 0) return online;
+    const primary = monitors.find((m) => m.is_primary) ?? monitors[0];
+    return primary ? [primary.id] : [];
+  }, [monitors, selectedMonitors]);
+
+  const toggleMonitor = (id: string) => {
+    const next = effectiveSelected.includes(id)
+      ? effectiveSelected.filter((x) => x !== id)
+      : [...effectiveSelected, id];
+    if (next.length === 0) {
+      setMonStatus("至少保留一个显示器");
+      return;
+    }
+    setMonStatus(null);
+    setSelectedMonitors(next); // 乐观更新,Rust 端收敛后经 monitors-changed 事件校准
+    invoke("set_selected_monitors", { ids: next }).catch((e) => setMonStatus(`切换失败: ${e}`));
+  };
 
   // 初始化时检查屏保注册状态和超时时间
   useEffect(() => {
@@ -172,6 +229,53 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <ToggleRow label="显示日期信息" checked={showInfoBar} onChange={toggleInfoBar} />
           </Section>
 
+          {/* 显示位置 */}
+          <Section title="显示位置">
+            {monitors.length === 0 ? (
+              <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {isTauri ? "未检测到显示器" : "浏览器预览不支持,请使用桌面应用"}
+              </p>
+            ) : (
+              <>
+                <MonitorMap monitors={monitors} selected={effectiveSelected} onToggle={toggleMonitor} />
+                <div className="space-y-1.5">
+                  {monitors.map((m, i) => {
+                    const on = effectiveSelected.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleMonitor(m.id)}
+                        aria-pressed={on}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all text-left"
+                        style={{
+                          background: on ? "var(--accent-soft)" : "transparent",
+                          border: `1px solid ${on ? "var(--accent)" : "var(--panel-border)"}`,
+                        }}
+                      >
+                        <span className="monitor-check shrink-0" data-checked={on} />
+                        <span className="text-xs flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+                          {i + 1} · {m.name}
+                        </span>
+                        <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>
+                          {m.is_primary ? "主屏 · " : ""}
+                          {m.width}×{m.height}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {monStatus && (
+                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {monStatus}
+                  </p>
+                )}
+                <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                  勾选的显示器各自显示一个全屏时钟;显示器断开后重连将自动恢复显示。
+                </p>
+              </>
+            )}
+          </Section>
+
           {/* 背景 */}
           <Section title="背景效果">
             <div className="flex gap-2">
@@ -256,6 +360,49 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </Section>
         </div>
       </aside>
+    </div>
+  );
+}
+
+/** 显示器拓扑小地图:按虚拟屏幕坐标等比排列,点击块即切换勾选 */
+function MonitorMap({ monitors, selected, onToggle }: {
+  monitors: MonitorDto[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  const minX = Math.min(...monitors.map((m) => m.x));
+  const minY = Math.min(...monitors.map((m) => m.y));
+  const maxX = Math.max(...monitors.map((m) => m.x + m.width));
+  const maxY = Math.max(...monitors.map((m) => m.y + m.height));
+  const vw = Math.max(1, maxX - minX);
+  const vh = Math.max(1, maxY - minY);
+  return (
+    <div className="monitor-map">
+      <div className="monitor-map__inner">
+        {monitors.map((m, i) => {
+          const on = selected.includes(m.id);
+          return (
+            <button
+              key={m.id}
+              onClick={() => onToggle(m.id)}
+              title={`${m.name}${m.is_primary ? "（主屏）" : ""} · ${m.width}×${m.height}`}
+              aria-label={`显示器 ${i + 1} ${m.name}${on ? "，已选中" : ""}`}
+              aria-pressed={on}
+              className="monitor-block"
+              data-on={on}
+              style={{
+                left: `${((m.x - minX) / vw) * 100}%`,
+                top: `${((m.y - minY) / vh) * 100}%`,
+                width: `${(m.width / vw) * 100}%`,
+                height: `${(m.height / vh) * 100}%`,
+              }}
+            >
+              <span className="monitor-block__num">{i + 1}</span>
+              {m.is_primary && <span className="monitor-block__primary">主</span>}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

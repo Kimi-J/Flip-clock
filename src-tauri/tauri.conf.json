@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Flip Clock",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "identifier": "com.flipclock.app",
   "build": {
     "frontendDist": "../dist",

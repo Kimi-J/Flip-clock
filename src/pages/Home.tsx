@@ -91,7 +91,9 @@ export default function Home({ saverMode = false }: HomeProps) {
 
   const handleClose = () => {
     if (isTauri) {
-      getCurrentWindow().close().catch(() => {});
+      // 用户主动点 X:退出整个进程,关闭所有显示器上的窗口。
+      // 不能用 getCurrentWindow().close()——那只关当前窗口,其他显示器残留
+      invoke("exit_app").catch(() => {});
     } else {
       window.close();
     }

@@ -1,5 +1,8 @@
+import { useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import ConfigPage from "@/pages/ConfigPage";
 import Home from "@/pages/Home";
+import { useClockStore, type ClockSettings } from "@/store/clockStore";
 
 /**
  * 检测运行模式:
@@ -27,6 +30,23 @@ function getMode(): "normal" | "saver" | "config" | "preview" {
 
 export default function App() {
   const mode = getMode();
+
+  // 多窗口设置同步:任一窗口修改设置后,其余窗口即时应用。
+  // 事件携带完整设置快照,不依赖各窗口 localStorage 的可见性时序。
+  useEffect(() => {
+    if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) return;
+    let unlisten: (() => void) | undefined;
+    listen<ClockSettings>("settings-sync", (e) => {
+      useClockStore.getState().rehydrate(e.payload);
+    })
+      .then((fn) => {
+        unlisten = fn;
+      })
+      .catch(() => {});
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   if (mode === "config") {
     return <ConfigPage />;
