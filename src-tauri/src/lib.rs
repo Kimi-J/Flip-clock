@@ -180,6 +180,33 @@ mod win_api {
             Ok(())
         }
     }
+
+    // ===== 屏保/电源抑制 =====
+    // SetThreadExecutionState 声明"本线程在持续显示内容":
+    //  - ES_CONTINUOUS:持续生效直至进程退出(线程结束自动失效,无需复位)
+    //  - ES_DISPLAY_REQUIRED:禁止息屏与屏保
+    // 用途:时钟主程序常驻时抑制系统屏保——否则屏保触发时 .scr 与主程序
+    // 争抢共享 WebView2 数据目录(同目录仅允许一个进程),.scr 的 WebView
+    // 初始化失败,残留全屏置顶黑窗(无法操作无法退出的"假屏保")。
+    // 主程序退出后抑制自动解除,系统屏保恢复正常触发。
+    // 参考: https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn SetThreadExecutionState(es_flags: u32) -> u32;
+    }
+
+    const ES_CONTINUOUS: u32 = 0x8000_0000;
+    const ES_DISPLAY_REQUIRED: u32 = 0x0000_0002;
+
+    /// 抑制息屏与屏保(主程序 setup 阶段调用一次即可)
+    pub fn suppress_screensaver() {
+        unsafe {
+            let r = SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+            if r == 0 {
+                crate::app_log("win_api: SetThreadExecutionState 失败(屏保抑制未生效)");
+            }
+        }
+    }
 }
 
 #[cfg(not(windows))]
@@ -190,6 +217,7 @@ mod win_api {
     pub fn set_timeout(_seconds: u32) -> Result<(), String> {
         Err("仅支持 Windows".to_string())
     }
+    pub fn suppress_screensaver() {}
 }
 
 #[tauri::command]
@@ -1290,7 +1318,10 @@ pub fn run() {
             if is_saver {
                 create_saver_windows(app.handle(), init_script);
             } else {
-                // 普通模式:按"显示位置"设置收敛窗口(默认主屏单窗)
+                // 普通模式:时钟常显,抑制系统屏保(避免 .scr 与主程序争抢
+                // 共享 WebView2 数据目录产生"假屏保"黑窗);进程退出自动解除
+                win_api::suppress_screensaver();
+                // 按"显示位置"设置收敛窗口(默认主屏单窗)
                 let ok = window_manager::reconcile(app.handle());
                 if !ok {
                     // 枚举失败兜底:主屏单窗(与旧行为一致),监听器待拓扑恢复后接管
