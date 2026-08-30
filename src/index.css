@@ -178,15 +178,18 @@
   --voxel-font: "Press Start 2P", "Anton", monospace;
 }
 
-/* 方块世界专属:全局文字使用像素字体(面板、信息栏、Toast 等) */
-[data-theme="voxel"] body,
-[data-theme="voxel"] .settings-panel,
-[data-theme="voxel"] .info-bar,
-[data-theme="voxel"] .control-bar {
-  font-family: var(--voxel-font);
+/* 方块世界专属:设置面板与 Toast 文字/数字用宋体(像素字中文缺字,数字过宽) */
+[data-theme="voxel"] body {
+  font-family: "SimSun", "宋体", serif;
+}
+/* 覆盖面板内联的 Oswald(标题/分组标题/快捷键键帽),全主题统一走宋体 */
+[data-theme="voxel"] aside h2,
+[data-theme="voxel"] aside h3,
+[data-theme="voxel"] aside kbd {
+  font-family: "SimSun", "宋体", serif !important;
 }
 
-/* 方块世界专属:数字使用像素字体(覆盖 .flip-unit/.flip-static__digit/.flip-leaf__digit 硬编码的 Anton) */
+/* 方块世界专属:翻页数字使用像素字体(覆盖 .flip-unit/.flip-static__digit/.flip-leaf__digit 硬编码的 Anton) */
 [data-theme="voxel"] .flip-unit,
 [data-theme="voxel"] .flip-static__digit,
 [data-theme="voxel"] .flip-leaf__digit {

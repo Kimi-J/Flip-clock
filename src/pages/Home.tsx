@@ -7,7 +7,7 @@ import FlipCardGroup from "@/components/FlipCardGroup";
 import InfoBar from "@/components/InfoBar";
 import SettingsPanel from "@/components/SettingsPanel";
 import { useClockTime } from "@/hooks/useClockTime";
-import { useClockStore } from "@/store/clockStore";
+import { THEME_OPTIONS, useClockStore } from "@/store/clockStore";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -131,7 +131,8 @@ export default function Home({ saverMode = false }: HomeProps) {
           setSettingsOpen((v) => !v);
           break;
         case "t": {
-          const order: typeof theme[] = ["amber", "minimal", "midnight", "matrix", "noir", "pure", "voxel", "synthwave", "ink", "clay"];
+          // 与设置面板同序:直接复用 THEME_OPTIONS,避免两处维护不同步
+          const order = THEME_OPTIONS.map((o) => o.value);
           const next = order[(order.indexOf(theme) + 1) % order.length];
           setTheme(next);
           showToast(`主题: ${labelOf(next)}`);
