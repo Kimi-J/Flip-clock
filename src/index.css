@@ -432,6 +432,129 @@
   box-shadow: inset 0 -8px 16px -8px rgba(40, 40, 40, 0.15);
 }
 
+/* ==================== 黏土 ==================== */
+/* 薰衣草酸奶:淡紫底 + 近白紫膨起卡片 + 深梅紫压印数字 + 柔软折痕接缝 */
+[data-theme="clay"] {
+  --bg-from: #e9e3f6;
+  --bg-via: #ddd3ef;
+  --bg-to: #d1c4e8;
+  --bg-glow-1: rgba(167, 139, 250, 0.1);
+  --bg-glow-2: rgba(196, 164, 255, 0.07);
+  --card-from: #faf8ff;
+  --card-to: #efe9fa;
+  --card-top-shine: rgba(255, 255, 255, 0.95);
+  --card-bottom-shade: rgba(167, 139, 250, 0.32);
+  --divider: rgba(167, 139, 250, 0.35);
+  --seam: #c9b9ee;
+  --digit: #6d51a8;
+  --digit-shadow: rgba(124, 95, 200, 0.32);
+  --accent: #8b5cf6;
+  --accent-with-bg: #7c3aed;
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --text-primary: #4c3a78;
+  --text-secondary: rgba(76, 58, 120, 0.6);
+  --text-muted: rgba(76, 58, 120, 0.35);
+  --panel-bg: rgba(250, 247, 255, 0.88);
+  --panel-border: rgba(139, 92, 246, 0.22);
+  --noise-opacity: 0;
+}
+
+/* 黏土专属:全局中文用站酷快乐体(手写弹跳感,信息栏/面板/Toast) */
+[data-theme="clay"] body {
+  font-family: "ZCOOL KuaiLe", "Noto Sans SC", sans-serif;
+}
+
+/* 黏土专属:卡片大圆角(接缝侧小圆角,折痕端点柔和) */
+[data-theme="clay"] .flip-static--top,
+[data-theme="clay"] .flip-leaf__face--front {
+  border-radius: 0.22em 0.22em 0.08em 0.08em;
+}
+[data-theme="clay"] .flip-static--bottom,
+[data-theme="clay"] .flip-leaf__face--back {
+  border-radius: 0.08em 0.08em 0.22em 0.22em;
+}
+
+/* 黏土专属:静态卡光影——顶部白光(面团鼓起受光) + 饱和紫 inset(黏土厚度) + 淡外投影(整块浮起) */
+[data-theme="clay"] .flip-static--top {
+  box-shadow:
+    inset 0 0.09em 0.14em rgba(255, 255, 255, 0.95),
+    inset -0.04em -0.05em 0.09em rgba(167, 139, 250, 0.28),
+    0.05em 0.07em 0.12em rgba(150, 120, 220, 0.35);
+}
+[data-theme="clay"] .flip-static--bottom {
+  box-shadow:
+    inset 0 0.08em 0.12em rgba(255, 255, 255, 0.6),
+    inset -0.04em -0.06em 0.1em rgba(167, 139, 250, 0.34),
+    0.05em 0.07em 0.12em rgba(150, 120, 220, 0.35);
+}
+/* 黏土专属:翻片只带 inset 光影(与所覆盖的静态卡取值一致),不带外投影——
+   外投影由静态卡恒定提供;若翻片也带,翻转中两层外投影叠加、落定翻片卸载时阴影骤减,产生跳变 */
+[data-theme="clay"] .flip-leaf__face--front {
+  box-shadow:
+    inset 0 0.09em 0.14em rgba(255, 255, 255, 0.95),
+    inset -0.04em -0.05em 0.09em rgba(167, 139, 250, 0.28);
+}
+[data-theme="clay"] .flip-leaf__face--back {
+  box-shadow:
+    inset 0 0.08em 0.12em rgba(255, 255, 255, 0.6),
+    inset -0.04em -0.06em 0.1em rgba(167, 139, 250, 0.34);
+}
+
+/* 黏土专属:折痕接缝——中部实心折痕色,顶/底边渐变续接上下卡的 inset 阴影,
+   视觉上"阴影越过接缝、接缝垫在阴影之下"(box-shadow 与元素原子渲染,无法真正分层,故把阴影续接画进接缝背景)。
+   接缝占满卡宽;两端 0.02em 用 mask 横向渐隐为透明,从折痕色过渡到下层未被遮盖的颜色(卡片圆角处透出背景) */
+[data-theme="clay"] .flip-unit::after {
+  left: 0;
+  width: 100%;
+  height: 0.05em;
+  background: linear-gradient(180deg,
+    rgba(167, 139, 250, 0.5) 0%,
+    var(--seam) 12%,
+    var(--seam) 88%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  /* 双向 mask:横向两端渐隐 × 纵向上下边缘渐隐(交集合成为圆角矩形软蒙版)。
+     横向实体段较接缝整体缩短 0.02em(中段收紧),两端延伸段等长保持、贴住新端点向内移动 */
+  -webkit-mask-image:
+    linear-gradient(90deg,
+      transparent 0,
+      black 0.03em,
+      black calc(100% - 0.03em),
+      transparent 100%
+    ),
+    linear-gradient(180deg,
+      transparent 0,
+      black 0.012em,
+      black calc(100% - 0.012em),
+      transparent 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg,
+      transparent 0,
+      black 0.03em,
+      black calc(100% - 0.03em),
+      transparent 100%
+    ),
+    linear-gradient(180deg,
+      transparent 0,
+      black 0.012em,
+      black calc(100% - 0.012em),
+      transparent 100%
+    );
+  mask-composite: intersect;
+}
+
+/* 黏土专属:数字压印——Baloo 2 圆胖字形,左上受光 + 右下压影(与卡片膨胀光影同向) */
+[data-theme="clay"] .flip-static__digit,
+[data-theme="clay"] .flip-leaf__digit {
+  font-family: "Baloo 2", "Anton", sans-serif !important;
+  font-weight: 800;
+  text-shadow:
+    0.015em 0.02em 0.028em rgba(107, 81, 168, 0.45),
+    -0.012em -0.012em 0.018em rgba(255, 255, 255, 0.9);
+}
+
 :root {
   font-family: "Oswald", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;

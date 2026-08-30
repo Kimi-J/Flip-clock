@@ -131,7 +131,7 @@ export default function Home({ saverMode = false }: HomeProps) {
           setSettingsOpen((v) => !v);
           break;
         case "t": {
-          const order: typeof theme[] = ["amber", "minimal", "midnight", "matrix", "noir", "pure", "voxel", "synthwave", "ink"];
+          const order: typeof theme[] = ["amber", "minimal", "midnight", "matrix", "noir", "pure", "voxel", "synthwave", "ink", "clay"];
           const next = order[(order.indexOf(theme) + 1) % order.length];
           setTheme(next);
           showToast(`主题: ${labelOf(next)}`);
@@ -267,6 +267,8 @@ function labelOf(theme: string): string {
       return "霓虹波";
     case "ink":
       return "水墨韵";
+    case "clay":
+      return "奶芙紫";
     default:
       return theme;
   }

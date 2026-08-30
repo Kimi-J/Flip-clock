@@ -176,14 +176,14 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         }}
       />
       <aside
-        className="relative h-full w-[340px] max-w-[88vw] glass-panel overflow-y-auto transition-all duration-300 ease-out"
+        className="relative h-full w-[340px] max-w-[88vw] glass-panel transition-all duration-300 ease-out flex flex-col"
         style={{
           borderLeft: "1px solid var(--panel-border)",
           opacity: shown ? 1 : 0,
           transform: shown ? "translateX(0)" : "translateX(40px)",
         }}
       >
-        <header className="sticky top-0 flex items-center justify-between px-6 py-5" style={{ background: "var(--panel-bg)", borderBottom: "1px solid var(--panel-border)" }}>
+        <header className="flex items-center justify-between px-6 py-5 shrink-0" style={{ background: "var(--panel-bg)", borderBottom: "1px solid var(--panel-border)" }}>
           <h2 className="text-sm tracking-[0.3em] uppercase" style={{ color: "var(--text-primary)", fontFamily: '"Oswald",sans-serif' }}>
             Settings
           </h2>
@@ -197,7 +197,8 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </button>
         </header>
 
-        <div className="p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-8">
           {/* 主题 */}
           <Section title="主题">
             <div className="grid grid-cols-2 gap-3">
@@ -358,6 +359,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </li>
             </ul>
           </Section>
+          </div>
         </div>
       </aside>
     </div>
