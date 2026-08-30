@@ -22,12 +22,11 @@ export default function Home({ saverMode = false }: HomeProps) {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [closeBtnVisible, setCloseBtnVisible] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const hideTimer = useRef<number>(0);
   const toastTimer = useRef<number>(0);
 
-  // 鼠标静止后隐藏控制条;鼠标移入右上角时显示关闭按钮(仅非屏保模式)
+  // 控制按钮组:任意鼠标活动显示,静止 4s 后隐藏;鼠标在右上角控制区内不隐藏
   useEffect(() => {
     if (saverMode) {
       // 屏保模式:任意鼠标移动/点击/按键即退出
@@ -48,26 +47,42 @@ export default function Home({ saverMode = false }: HomeProps) {
         window.removeEventListener("keydown", onKey);
       };
     }
+    // 鼠标在右上角控制区(180×100,覆盖按钮组+余量)内时不自动隐藏
+    const inCorner = (x: number, y: number) => x > window.innerWidth - 180 && y < 100;
     const onMove = (e: MouseEvent) => {
+      // 光标同步恢复(直接操作样式,不等 React 渲染,避免首次移动不出现)
+      document.body.style.cursor = "";
       setControlsVisible(true);
       clearTimeout(hideTimer.current);
-      hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
-      setCloseBtnVisible(e.clientX > window.innerWidth - 120 && e.clientY < 120);
+      if (!inCorner(e.clientX, e.clientY)) {
+        hideTimer.current = window.setTimeout(() => setControlsVisible(false), 4000);
+      }
     };
     const onTouch = () => {
       setControlsVisible(true);
       clearTimeout(hideTimer.current);
-      hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+      hideTimer.current = window.setTimeout(() => setControlsVisible(false), 4000);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("touchstart", onTouch);
-    hideTimer.current = window.setTimeout(() => setControlsVisible(false), 2600);
+    hideTimer.current = window.setTimeout(() => setControlsVisible(false), 4000);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("touchstart", onTouch);
       clearTimeout(hideTimer.current);
     };
   }, [saverMode]);
+
+  // 光标隐藏:与控制条共用同一计时/区域逻辑——静止 4s 隐藏,任意鼠标活动立即恢复,右上角控制区内不隐藏
+  // CSS cursor:none 由 Chromium 的 WM_SETCURSOR 链路在 WebView 客户区(=整个全屏窗口)生效,鼠标移出窗口/失焦由系统自动恢复
+  useEffect(() => {
+    if (saverMode) return;
+    const show = controlsVisible || settingsOpen;
+    document.body.style.cursor = show ? "" : "none";
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [controlsVisible, settingsOpen, saverMode]);
 
   // 应用主题到 html 节点
   useEffect(() => {
@@ -169,7 +184,6 @@ export default function Home({ saverMode = false }: HomeProps) {
           onOpenSettings={() => setSettingsOpen(true)}
           onClose={handleClose}
           visible={controlsVisible || settingsOpen}
-          closeVisible={closeBtnVisible}
         />
       )}
 
@@ -205,7 +219,7 @@ export default function Home({ saverMode = false }: HomeProps) {
         {/* 底部品牌细线(仅非屏保模式) */}
         {!saverMode && (
           <div
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 transition-opacity duration-500"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 transition-opacity duration-300"
             style={{ opacity: controlsVisible ? 0.6 : 0 }}
           >
             <span className="h-px w-10" style={{ background: "linear-gradient(90deg,transparent,var(--accent))" }} />
