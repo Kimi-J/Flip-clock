@@ -45,6 +45,9 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [ssTimeout, setSsTimeout] = useState<number>(300);
   const timeoutDebounce = useRef<number>(0);
 
+  // ===== 窗口形态(全屏 / 桌面小部件) =====
+  const [winMode, setWinMode] = useState<string>("fullscreen");
+
   // ===== 显示位置(多显示器) =====
   const [monitors, setMonitors] = useState<MonitorDto[]>([]);
   const [selectedMonitors, setSelectedMonitors] = useState<string[]>([]);
@@ -103,7 +106,16 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     invoke<number>("get_screensaver_timeout")
       .then(setSsTimeout)
       .catch(() => {});
+    invoke<string>("get_window_mode")
+      .then(setWinMode)
+      .catch(() => {});
   }, [open]);
+
+  const handleWindowMode = (mode: string) => {
+    if (!isTauri || mode === winMode) return;
+    setWinMode(mode); // 乐观更新;切到小窗后本窗口将被 Rust 端关闭
+    invoke("set_window_mode", { mode }).catch(() => setWinMode(winMode));
+  };
 
   const handleScreensaverToggle = () => {
     if (!isTauri) return;
@@ -275,6 +287,32 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </p>
               </>
             )}
+          </Section>
+
+          {/* 窗口形态 */}
+          <Section title="窗口形态">
+            <div className="flex gap-2">
+              {([
+                ["fullscreen", "全屏"],
+                ["widget", "桌面小部件"],
+              ] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => handleWindowMode(v)}
+                  className="flex-1 py-2 rounded-lg text-xs transition-all"
+                  style={{
+                    color: winMode === v ? "var(--bg-from)" : "var(--text-secondary)",
+                    background: winMode === v ? "var(--accent)" : "transparent",
+                    border: `1px solid ${winMode === v ? "var(--accent)" : "var(--panel-border)"}`,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              小部件为置顶票根小窗:拖拽移动,双击回全屏,右键菜单。
+            </p>
           </Section>
 
           {/* 背景 */}

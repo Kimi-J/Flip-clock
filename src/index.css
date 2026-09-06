@@ -577,6 +577,14 @@ body,
   background: var(--bg-from);
 }
 
+/* 小部件窗口:透明底色(index.html 引导脚本在首帧前打标,防深色矩形闪;
+   !important 压过 body 内联的 #0a0a0f——那是为普通窗口防白闪准备的) */
+html.widget-boot,
+html.widget-boot body,
+html.widget-boot #root {
+  background: transparent !important;
+}
+
 body {
   color: var(--text-primary);
 }
@@ -1019,4 +1027,308 @@ input[type="range"]::-webkit-slider-thumb {
 .noise-layer {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: var(--noise-opacity);
+}
+
+/* ==================== 桌面小部件 · 票根皮肤 ==================== */
+/* 皮肤自带完整配色,不跟随全屏主题;翻页卡变量局部覆盖为"纸面油墨"色系 */
+.widget-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  user-select: none;
+}
+
+.widget-drag {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move; /* 整面可拖(手动阈值拖拽),四向箭头提示 */
+}
+
+/* 投影用 drop-shadow 画在包装上:跟随 mask 后的真实轮廓(撕口也有正确投影);
+   范围须小于窗口底部留白(20px),否则阴影被窗口边缘硬切出现跳变;
+   transform(微倾+缩放)由 WidgetPage 内联给出 */
+.ticket-wrap {
+  /* blur 6px 的视觉衰减距离约 12px(+3px 偏移),到窗口边缘(20px 留白)前已归零,不再硬切 */
+  filter: drop-shadow(0 3px 6px rgba(60, 45, 20, 0.35));
+}
+
+.skin-ticket {
+  /* 票面数字规格(wipe 数字组件读取) */
+  --card-font: 34px;
+}
+
+/* 里程表式滚动:旧值上滚渐隐、新值自下入位渐显;行程限 ±0.28em(约 1/3 字高),
+   显示区域不越出数字上下各三分之一字高;缓出用回弹感曲线,缓入加速,渐显渐隐 */
+.roll-digit {
+  position: relative;
+  display: inline-block;
+  width: 0.62em;
+  height: 1.2em;
+  overflow: hidden;
+  font-family: "Anton", "Bebas Neue", sans-serif;
+  font-size: var(--card-font, 34px);
+}
+
+.roll-digit__layer {
+  position: absolute;
+  inset: 0;
+  line-height: 1.2em;
+  text-align: center;
+  color: #2b2417;
+  text-shadow: 0.02em 0.03em 0.02em rgba(0, 0, 0, 0.25);
+}
+
+/* 位移与透明度拆成两条动画,各自带独立时长/缓动:
+   旧值渐隐前载(220ms 内隐完),新值出现的同时旧值已经开始隐,中段无双实重叠 */
+.roll-digit__layer--out {
+  animation:
+    ticket-roll-out-move 0.34s cubic-bezier(0.5, 0, 0.75, 0.4) both,
+    ticket-fade-out 0.22s cubic-bezier(0.6, 0, 0.9, 0.4) both;
+}
+
+.roll-digit__layer--in {
+  animation:
+    ticket-roll-in-move 0.34s cubic-bezier(0.16, 1, 0.3, 1) both,
+    ticket-fade-in 0.3s cubic-bezier(0.3, 0.6, 0.4, 1) both;
+}
+
+@keyframes ticket-roll-out-move {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-0.28em);
+  }
+}
+
+@keyframes ticket-roll-in-move {
+  from {
+    transform: translateY(0.28em);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes ticket-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes ticket-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ticket {
+  position: relative;
+  width: 300px;
+  height: 112px;
+  border-radius: 8px;
+  background: #f2ead8;
+  display: flex;
+  overflow: hidden;
+  /* 撕口:副券分隔线上下各一个半圆镂空(透明像素仍命中,缺口仅 8px,可接受) */
+  -webkit-mask-image:
+    radial-gradient(circle 8px at calc(100% - 84px) 0, transparent 97%, black 100%),
+    radial-gradient(circle 8px at calc(100% - 84px) 100%, transparent 97%, black 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle 8px at calc(100% - 84px) 0, transparent 97%, black 100%),
+    radial-gradient(circle 8px at calc(100% - 84px) 100%, transparent 97%, black 100%);
+  mask-composite: intersect;
+}
+
+.ticket__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+}
+
+.ticket__top {
+  font-family: "Oswald", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #c0392b;
+}
+
+.ticket__cards {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ticket__colon {
+  font-family: "Anton", sans-serif;
+  font-size: 26px;
+  line-height: 1;
+  color: #c0392b;
+  transform: translateY(-1px);
+}
+
+.ticket__date {
+  margin-top: auto;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #8a7a58;
+}
+
+.ticket__perf {
+  width: 0;
+  flex-shrink: 0;
+  border-left: 2px dashed #b8a67e;
+  margin: 8px 0;
+}
+
+.ticket__stub {
+  width: 84px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ticket__barcode {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  height: 34px;
+}
+
+.ticket__barcode span {
+  display: block;
+  background: #2b2417;
+}
+
+.ticket__no {
+  font-family: "Major Mono Display", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #8a7a58;
+}
+
+.ticket__stamp {
+  position: absolute;
+  right: 96px;
+  bottom: 12px;
+  font-family: "Oswald", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: rgba(192, 57, 43, 0.6);
+  border: 1.5px solid rgba(192, 57, 43, 0.6);
+  border-radius: 3px;
+  padding: 1px 5px;
+  transform: rotate(-8deg);
+  pointer-events: none;
+}
+
+/* 悬停显露的关闭钮(置于拖拽区外,避免拖拽吞点击;独占右上角) */
+.widget-x {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 30;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(43, 36, 23, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(242, 234, 216, 0.9);
+  color: #2b2417;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+}
+
+.widget-root:hover .widget-x {
+  opacity: 1;
+}
+
+.widget-x:hover {
+  background: rgba(192, 57, 43, 0.9);
+  color: #f2ead8;
+  border-color: transparent;
+}
+
+/* 四角缩放手柄:纸色小方片 + 油墨描边(深浅壁纸都可见),悬停显露 */
+.widget-rh {
+  position: absolute;
+  z-index: 30;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: rgba(242, 234, 216, 0.9);
+  border: 1px solid rgba(43, 36, 23, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.widget-root:hover .widget-rh {
+  opacity: 1;
+}
+
+.widget-rh:hover {
+  background: #f2ead8;
+}
+
+/* 右键迷你菜单 */
+.widget-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 120px;
+  padding: 4px;
+  background: #2b2417;
+  border: 1px solid rgba(242, 234, 216, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.widget-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 12px;
+  color: #f2ead8;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.widget-menu button:hover {
+  background: rgba(242, 234, 216, 0.12);
+}
+
+/* 菜单勾号位:固定宽度,勾选态对齐 */
+.widget-menu__tick {
+  display: inline-block;
+  width: 14px;
+  color: #c9a86a;
 }

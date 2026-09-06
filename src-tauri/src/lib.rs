@@ -241,6 +241,8 @@ fn exit_saver(app: tauri::AppHandle) {
 /// 会触发窗口关闭事件,那里只应关掉单个窗口,绝不能退出整个进程。
 #[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
+    // 退出前兜底保存小窗位置(Moved 节流可能漏掉拖拽终点)
+    widget_window::save_now(&app);
     app.exit(0);
 }
 
@@ -488,11 +490,19 @@ mod app_settings {
     use serde::{Deserialize, Serialize};
     use std::path::PathBuf;
 
+    // #[serde(default)]:旧版 settings.json 缺新字段时仍可反序列化(不丢已有配置)
     #[derive(Default, Serialize, Deserialize)]
+    #[serde(default)]
     struct Settings {
         /// 选中的显示器持久 ID 列表;空/缺省 = 未配置(默认主屏)。
         /// 保留已断开的显示器 ID,重连后自动恢复显示(docking 体验)。
         selected_monitors: Option<Vec<String>>,
+        /// 窗口形态:"fullscreen"(默认,按显示位置收敛全屏窗) | "widget"(单置顶小窗)
+        window_mode: Option<String>,
+        /// 小部件窗口位置(物理坐标);None = 默认主屏右下角
+        widget_pos: Option<(i32, i32)>,
+        /// 小部件窗口尺寸(物理像素);None = 默认 340×152 逻辑像素
+        widget_size: Option<(u32, u32)>,
     }
 
     fn settings_dir() -> PathBuf {
@@ -502,26 +512,60 @@ mod app_settings {
         PathBuf::from(base).join("com.flipclock.app")
     }
 
-    pub fn load_selected() -> Vec<String> {
+    fn load() -> Settings {
         let path = settings_dir().join("settings.json");
         let Ok(raw) = std::fs::read_to_string(path) else {
-            return vec![];
+            return Settings::default();
         };
-        serde_json::from_str::<Settings>(&raw)
-            .ok()
-            .and_then(|s| s.selected_monitors)
-            .unwrap_or_default()
+        serde_json::from_str::<Settings>(&raw).unwrap_or_default()
+    }
+
+    fn save(s: &Settings) {
+        let dir = settings_dir();
+        let _ = std::fs::create_dir_all(&dir);
+        if let Ok(json) = serde_json::to_string_pretty(s) {
+            let _ = std::fs::write(dir.join("settings.json"), json);
+        }
+    }
+
+    pub fn load_selected() -> Vec<String> {
+        load().selected_monitors.unwrap_or_default()
     }
 
     pub fn save_selected(ids: &[String]) {
-        let dir = settings_dir();
-        let _ = std::fs::create_dir_all(&dir);
-        let settings = Settings {
-            selected_monitors: Some(ids.to_vec()),
-        };
-        if let Ok(json) = serde_json::to_string_pretty(&settings) {
-            let _ = std::fs::write(dir.join("settings.json"), json);
-        }
+        let mut s = load(); // 读-改-写:保留 window_mode / widget_pos
+        s.selected_monitors = Some(ids.to_vec());
+        save(&s);
+    }
+
+    pub fn load_window_mode() -> String {
+        load().window_mode.unwrap_or_else(|| "fullscreen".to_string())
+    }
+
+    pub fn save_window_mode(mode: &str) {
+        let mut s = load();
+        s.window_mode = Some(mode.to_string());
+        save(&s);
+    }
+
+    pub fn load_widget_pos() -> Option<(i32, i32)> {
+        load().widget_pos
+    }
+
+    pub fn save_widget_pos(x: i32, y: i32) {
+        let mut s = load();
+        s.widget_pos = Some((x, y));
+        save(&s);
+    }
+
+    pub fn load_widget_size() -> Option<(u32, u32)> {
+        load().widget_size
+    }
+
+    pub fn save_widget_size(w: u32, h: u32) {
+        let mut s = load();
+        s.widget_size = Some((w, h));
+        save(&s);
     }
 }
 
@@ -731,7 +775,7 @@ mod window_manager {
     use std::sync::{Mutex, PoisonError};
     use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
-    const NORMAL_PREFIX: &str = "normal-";
+    pub(crate) const NORMAL_PREFIX: &str = "normal-";
     static WINDOW_SEQ: AtomicU32 = AtomicU32::new(0);
     /// 防重入:并发触发直接跳过,等待下一轮事件补齐
     static BUSY: AtomicBool = AtomicBool::new(false);
@@ -847,6 +891,10 @@ mod window_manager {
     }
 
     fn reconcile_inner(app: &AppHandle) -> bool {
+        // 小部件形态:全屏窗口管理整体挂起(勾选变更/热插拔均不建全屏窗)
+        if app_settings::load_window_mode() == "widget" {
+            return has_normal_window(app);
+        }
         let Some(monitors) = crate::monitors::enumerate() else {
             crate::app_log("reconcile: enumerate failed, keep windows as-is");
             return has_normal_window(app); // 不变量 1
@@ -964,6 +1012,152 @@ mod window_manager {
         }
 
         let _ = builder.build();
+    }
+}
+
+// ==================== 桌面小部件窗口(票根皮肤) ====================
+// 与 normal- 全屏窗口完全隔离:reconcile 只认 normal- 前缀,小窗用 widget- 前缀。
+// 形态切换 = 关旧建新(遵守"绝不对已存在窗口做全屏/尺寸状态切换"的铁律)。
+// 透明窗口三件套:decorations(false) + transparent(true) + shadow(false)
+//  - Windows 原生阴影是矩形,会在圆角/异形处渗色,投影全部由前端 CSS 绘制
+//  - 透明像素仍参与命中测试(无 per-pixel click-through),异形突出已控制在小尺寸
+mod widget_window {
+    use crate::app_settings;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    use tauri::{AppHandle, Manager};
+
+    pub const PREFIX: &str = "widget-";
+    /// 逻辑尺寸:票根 300×112 + 四边余量(微倾/阴影/撕口外溢)
+    const W: f64 = 340.0;
+    const H: f64 = 152.0;
+
+    static LABEL_SEQ: AtomicU32 = AtomicU32::new(0);
+    static LAST_SAVE: Mutex<Option<Instant>> = Mutex::new(None);
+
+    fn next_label() -> String {
+        // 只增不复用,避免与尚未销毁的旧窗口冲突(同 normal- 策略)
+        format!("{}{}", PREFIX, LABEL_SEQ.fetch_add(1, Ordering::Relaxed) + 1)
+    }
+
+    /// 校验保存的位置:窗口左上角+24px 须落在某台显示器内,否则视为不可见回退默认位
+    fn valid_pos(x: i32, y: i32) -> bool {
+        crate::monitors::enumerate()
+            .map(|mons| {
+                mons.iter().any(|m| {
+                    x + 24 >= m.x && x + 24 < m.x + m.width && y + 24 >= m.y && y + 24 < m.y + m.height
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    /// 创建小窗:隐藏创建 → 取物理尺寸 → 恢复/计算位置 → show(与全屏建窗序列同构)
+    pub fn create(app: &AppHandle) {
+        let mut builder = tauri::WebviewWindowBuilder::new(
+            app,
+            next_label(),
+            tauri::WebviewUrl::App("index.html".into()),
+        )
+        .title("Flip Clock · 票根")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        // 四角手柄经 startResizeDragging 缩放(需 resizable;票面随窗口等比缩放)
+        .resizable(true)
+        .min_inner_size(260.0, 116.0)
+        .max_inner_size(680.0, 304.0)
+        .focused(false)
+        .visible(false)
+        .inner_size(W, H)
+        .initialization_script("window.__LAUNCH_MODE__ = 'widget';");
+
+        #[cfg(windows)]
+        {
+            builder = builder.data_directory(crate::webview_data_dir());
+        }
+
+        let Ok(window) = builder.build() else {
+            crate::app_log("widget: build failed");
+            return;
+        };
+
+        // 尺寸记忆:有保存值则恢复(set_size 受 min/max 约束自动钳制)
+        if let Some((w, h)) = app_settings::load_widget_size() {
+            let _ = window.set_size(tauri::PhysicalSize::new(w, h));
+        }
+
+        let (x, y) = app_settings::load_widget_pos()
+            .filter(|&(sx, sy)| valid_pos(sx, sy))
+            .unwrap_or_else(|| {
+                // 默认:主屏右下角(留出任务栏高度)
+                let phys = window
+                    .outer_size()
+                    .unwrap_or(tauri::PhysicalSize::new(W as u32, H as u32));
+                match crate::monitors::enumerate().and_then(|ms| {
+                    ms.iter().find(|m| m.is_primary).cloned().or_else(|| ms.first().cloned())
+                }) {
+                    Some(p) => (
+                        p.x + p.width - phys.width as i32 - 24,
+                        p.y + p.height - phys.height as i32 - 56,
+                    ),
+                    None => (100, 100),
+                }
+            });
+        let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+        let _ = window.show();
+    }
+
+    /// Moved 事件节流落盘:拖拽中每 500ms 至多写一次;最终位置由 save_now 兜底
+    pub fn maybe_save_pos(x: i32, y: i32) {
+        let mut guard = LAST_SAVE.lock().unwrap_or_else(|e| e.into_inner());
+        let due = guard
+            .map(|t| t.elapsed() > Duration::from_millis(500))
+            .unwrap_or(true);
+        if due {
+            app_settings::save_widget_pos(x, y);
+            *guard = Some(Instant::now());
+        }
+    }
+
+    /// Resized 事件节流落盘(与位置共用节流阀:同一次拖动手柄的连发只写一次)
+    pub fn maybe_save_size(w: u32, h: u32) {
+        let mut guard = LAST_SAVE.lock().unwrap_or_else(|e| e.into_inner());
+        let due = guard
+            .map(|t| t.elapsed() > Duration::from_millis(500))
+            .unwrap_or(true);
+        if due {
+            app_settings::save_widget_size(w, h);
+            *guard = Some(Instant::now());
+        }
+    }
+
+    /// 退出前兜底:把小窗最终位置/尺寸写入 settings.json(节流可能漏掉终点)
+    pub fn save_now(app: &AppHandle) {
+        for w in app.webview_windows().into_values() {
+            if w.label().starts_with(PREFIX) {
+                if let Ok(p) = w.outer_position() {
+                    app_settings::save_widget_pos(p.x, p.y);
+                }
+                if let Ok(s) = w.outer_size() {
+                    app_settings::save_widget_size(s.width, s.height);
+                }
+            }
+        }
+    }
+
+    pub fn close_all(app: &AppHandle) {
+        for w in app.webview_windows().into_values() {
+            if w.label().starts_with(PREFIX) {
+                let _ = w.close();
+            }
+        }
+    }
+
+    pub fn exists(app: &AppHandle) -> bool {
+        app.webview_windows().keys().any(|l| l.starts_with(PREFIX))
     }
 }
 
@@ -1175,6 +1369,54 @@ async fn set_selected_monitors(app: tauri::AppHandle, ids: Vec<String>) -> Resul
     Ok(())
 }
 
+// ==================== 窗口形态(全屏 / 桌面小部件) ====================
+
+/// 形态应用:让窗口集合与 settings.json 的 window_mode 一致。
+/// 形态切换 = 关旧建新(已存在窗口绝不做全屏/尺寸状态切换)。
+/// 启动路径(setup)可同步调用;运行时经 async_runtime::spawn 派发。
+fn apply_window_mode(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if app_settings::load_window_mode() == "widget" {
+        // 先建后关:全关即退出进程(Tauri 默认行为,与 reconcile 不变量 3 同理)。
+        // 建新失败则保留旧窗不动,避免零窗口。
+        if !widget_window::exists(app) {
+            widget_window::create(app);
+        }
+        if widget_window::exists(app) {
+            for w in app.webview_windows().into_values() {
+                if w.label().starts_with(window_manager::NORMAL_PREFIX) {
+                    let _ = w.close();
+                }
+            }
+        }
+    } else {
+        // 先建后关:reconcile 收敛出全屏窗后再关小窗;建不出来则保留小窗
+        if window_manager::reconcile(app) {
+            widget_window::close_all(app);
+        }
+    }
+}
+
+#[tauri::command]
+fn get_window_mode() -> String {
+    app_settings::load_window_mode()
+}
+
+/// async 命令(同 set_selected_monitors:主线程同步建窗会与 WebView2 死锁 wry#583)
+#[tauri::command]
+async fn set_window_mode(app: tauri::AppHandle, mode: String) -> Result<(), String> {
+    if mode != "widget" && mode != "fullscreen" {
+        return Err("未知窗口形态".to_string());
+    }
+    // 先落盘后收敛:即使收敛异常也不丢配置(同显示器勾选的可靠模式)
+    app_settings::save_window_mode(&mode);
+    let app2 = app.clone();
+    let _ = tauri::async_runtime::spawn(async move {
+        apply_window_mode(&app2);
+    });
+    Ok(())
+}
+
 /// 屏保模式:所有显示器各建一个独立窗口铺满(不遵循"显示位置",保持既有行为)
 fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
     #[cfg(windows)]
@@ -1294,6 +1536,15 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        // 单实例:二次启动聚焦已有窗口并退出新实例——
+        // 多开会争抢共享 WebView2 数据目录(同目录仅允许一个进程)
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(w) = app.webview_windows().values().next() {
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
         .on_window_event(|window, event| {
             match event {
                 // 窗口销毁时清理记账(取消勾选/拔显示器/关窗后,记账不再引用已死窗口)。
@@ -1301,6 +1552,18 @@ pub fn run() {
                 // CloseRequested 也可能来自 reconcile 的单个关窗,不能混为一谈
                 tauri::WindowEvent::Destroyed => {
                     window_manager::forget(window.label());
+                }
+                // 小窗拖拽:物理坐标节流落盘(混合 DPI 下与显示器坐标同体系)
+                tauri::WindowEvent::Moved(pos) => {
+                    if window.label().starts_with(widget_window::PREFIX) {
+                        widget_window::maybe_save_pos(pos.x, pos.y);
+                    }
+                }
+                // 小窗缩放:物理尺寸节流落盘
+                tauri::WindowEvent::Resized(size) => {
+                    if window.label().starts_with(widget_window::PREFIX) {
+                        widget_window::maybe_save_size(size.width, size.height);
+                    }
                 }
                 _ => {}
             }
@@ -1318,14 +1581,19 @@ pub fn run() {
             if is_saver {
                 create_saver_windows(app.handle(), init_script);
             } else {
-                // 普通模式:时钟常显,抑制系统屏保(避免 .scr 与主程序争抢
+                // 普通模式:时钟常显(全屏/小窗),抑制系统屏保(避免 .scr 与主程序争抢
                 // 共享 WebView2 数据目录产生"假屏保"黑窗);进程退出自动解除
                 win_api::suppress_screensaver();
-                // 按"显示位置"设置收敛窗口(默认主屏单窗)
-                let ok = window_manager::reconcile(app.handle());
-                if !ok {
-                    // 枚举失败兜底:主屏单窗(与旧行为一致),监听器待拓扑恢复后接管
-                    window_manager::fallback_window(app.handle());
+                if app_settings::load_window_mode() == "widget" {
+                    // 桌面小部件形态:单置顶小窗;reconcile 已挂起(见 reconcile_inner 门)
+                    widget_window::create(app.handle());
+                } else {
+                    // 按"显示位置"设置收敛窗口(默认主屏单窗)
+                    let ok = window_manager::reconcile(app.handle());
+                    if !ok {
+                        // 枚举失败兜底:主屏单窗(与旧行为一致),监听器待拓扑恢复后接管
+                        window_manager::fallback_window(app.handle());
+                    }
                 }
                 // 监听显示器拔插/分辨率/主屏切换,防抖后自动收敛窗口
                 display_listener::spawn(app.handle().clone());
@@ -1344,6 +1612,8 @@ pub fn run() {
             list_monitors,
             get_selected_monitors,
             set_selected_monitors,
+            get_window_mode,
+            set_window_mode,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

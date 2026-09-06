@@ -31,6 +31,17 @@
       href="https://fonts.font.im/css?family=ZCOOL+KuaiLe"
       rel="stylesheet"
     />
+    <script>
+      // 小部件窗口防暗闪:stylesheet 的 html/body/#root 底色在 React 挂载前就会
+      // 绘制,透明窗口会先闪一块深色矩形;在样式表生效前给 <html> 打标记类,
+      // CSS 对标记类全程强制透明(injected __LAUNCH_MODE__ 先于本脚本执行)
+      if (
+        window.__LAUNCH_MODE__ === 'widget' ||
+        new URLSearchParams(location.search).get('mode') === 'widget'
+      ) {
+        document.documentElement.classList.add('widget-boot')
+      }
+    </script>
     <script type="module">
       if (import.meta.hot?.on) {
         import.meta.hot.on('vite:error', (error) => {

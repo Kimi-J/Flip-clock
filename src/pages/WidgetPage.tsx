@@ -1,0 +1,255 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { X } from "lucide-react";
+import { useClockTime } from "@/hooks/useClockTime";
+import { useClockStore } from "@/store/clockStore";
+
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+const WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+
+/** 基准窗口尺寸(Rust 建窗同值):缩放比例 = 当前窗口 / 基准 */
+const BASE_W = 340;
+const BASE_H = 152;
+
+/** 缩放手柄(右上角留给 X,只设其余三角;API 的 ResizeDirection 是未导出联合,用字面量) */
+const RESIZE_HANDLES = [
+  { key: "nw", dir: "NorthWest", cursor: "nwse-resize", style: { top: 3, left: 3 } },
+  { key: "sw", dir: "SouthWest", cursor: "nesw-resize", style: { bottom: 3, left: 3 } },
+  { key: "se", dir: "SouthEast", cursor: "nwse-resize", style: { bottom: 3, right: 3 } },
+] as const;
+
+/**
+ * 桌面小部件 · 票根皮肤。
+ * - 皮肤自带完整配色,不跟随全屏主题(避免"票根配矩阵绿"的灾难组合)
+ * - 数字无卡片、无翻页:变化时新值"从上往下刷"揭开盖住旧值(clip-path wipe)
+ * - 交互:任意位置拖拽移动(move 光标) / 双击回全屏 / 右键迷你菜单(含"显示秒") /
+ *   悬停显 X(退出进程)与三角缩放手柄
+ * - 秒默认隐藏(右键菜单开启,与全屏 showSeconds 共享),日期行默认开
+ */
+export default function WidgetPage() {
+  // showSeconds/toggleSeconds 与全屏共享同一设置(settings-sync 即时互通)
+  const { is24Hour, showSeconds, toggleSeconds } = useClockStore();
+  const time = useClockTime(is24Hour);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // 窗口缩放 → 票面整体等比缩放(transform 等比,布局零改动)
+  const [scale, setScale] = useState(() => Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H));
+  useEffect(() => {
+    const onResize = () => setScale(Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // 透明窗口:html/body/#root 必须透明(默认主题底色会挡住桌面,异形轮廓无从谈起)
+  useEffect(() => {
+    const root = document.getElementById("root");
+    const prev = [document.documentElement.style.background, document.body.style.background, root?.style.background ?? ""];
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+    if (root) root.style.background = "transparent";
+    return () => {
+      document.documentElement.style.background = prev[0];
+      document.body.style.background = prev[1];
+      if (root) root.style.background = prev[2];
+    };
+  }, []);
+
+  const backToFullscreen = () => {
+    setMenu(null);
+    if (isTauri) invoke("set_window_mode", { mode: "fullscreen" }).catch(() => {});
+  };
+
+  const exitApp = () => {
+    if (isTauri) invoke("exit_app").catch(() => {});
+  };
+
+  // 手动拖拽:不用原生 startDragging——Windows 原生移动会把窗口"标题栏"
+  // 钳制在屏幕顶边之内(无标题栏也受限),且会吞掉本次点击。
+  // 改为 pointer 捕获 + setPosition 手动移动:任意方向无限制;
+  // 4px 阈值内松手仍算点击(双击/右键语义保留)。
+  const dragRef = useRef<{
+    sx: number;
+    sy: number;
+    wx: number;
+    wy: number;
+    dpr: number;
+    moved: boolean;
+  } | null>(null);
+  const onDragPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || !isTauri) return;
+    const win = getCurrentWindow();
+    win
+      .outerPosition()
+      .then((pos) => {
+        dragRef.current = {
+          sx: e.screenX,
+          sy: e.screenY,
+          wx: pos.x,
+          wy: pos.y,
+          dpr: window.devicePixelRatio || 1,
+          moved: false,
+        };
+      })
+      .catch(() => {});
+    // 指针捕获:移出窗口边界后仍能持续收到 move 事件(拖到屏幕边缘不断线)
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onDragPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = (e.screenX - d.sx) * d.dpr;
+    const dy = (e.screenY - d.sy) * d.dpr;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) <= 4) return;
+    d.moved = true;
+    getCurrentWindow()
+      .setPosition(new PhysicalPosition(Math.round(d.wx + dx), Math.round(d.wy + dy)))
+      .catch(() => {});
+  };
+  const endDrag = () => {
+    dragRef.current = null;
+  };
+
+  // 条形码:固定种子伪随机条宽,不随时间变化(票面印刷感)
+  const bars = useMemo(() => {
+    let s = 260906;
+    return Array.from({ length: 22 }, () => {
+      s = (s * 9301 + 49297) % 233280;
+      return 1 + (s % 3);
+    });
+  }, []);
+
+  const d = time.date;
+  const dateText = `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日 ${WEEKDAYS[d.getDay()]}`;
+  const period = is24Hour ? "" : d.getHours() >= 12 ? "PM" : "AM";
+  const stubNo = `Nº ${String(time.hours).padStart(2, "0")}${String(time.minutes).padStart(2, "0")}`;
+
+  return (
+    <div
+      className="widget-root"
+      onClick={() => menu && setMenu(null)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setMenu({
+          x: Math.min(e.clientX, window.innerWidth - 132),
+          y: Math.min(e.clientY, window.innerHeight - 108),
+        });
+      }}
+    >
+      {/* 拖拽面:任意位置可拖(手动阈值拖拽);按钮/手柄置于区外,避免吞点击 */}
+      <div
+        className="widget-drag"
+        onPointerDown={onDragPointerDown}
+        onPointerMove={onDragPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onDoubleClick={backToFullscreen}
+      >
+        <div className="ticket-wrap" style={{ transform: `rotate(-1.5deg) scale(${scale})` }}>
+          <div className="ticket skin-ticket">
+            <div className="ticket__main">
+              <div className="ticket__top">ADMIT ONE · FLIP CLOCK</div>
+              <div className="ticket__cards">
+                <WipeGroup value={time.hours} />
+                <span className="ticket__colon">:</span>
+                <WipeGroup value={time.minutes} />
+                {showSeconds && (
+                  <>
+                    <span className="ticket__colon">:</span>
+                    <WipeGroup value={time.seconds} />
+                  </>
+                )}
+              </div>
+              <div className="ticket__date">
+                {dateText}
+                {period && ` · ${period}`}
+              </div>
+            </div>
+            <div className="ticket__perf" />
+            <div className="ticket__stub">
+              <div className="ticket__barcode">
+                {bars.map((w, i) => (
+                  <span key={i} style={{ width: `${w}px` }} />
+                ))}
+              </div>
+              <div className="ticket__no">{stubNo}</div>
+            </div>
+            <span className="ticket__stamp">VALID</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 悬停显露:关闭钮(退出进程,与全屏 X 语义一致)+ 三角缩放手柄 */}
+      <button className="widget-x" aria-label="关闭" onClick={exitApp}>
+        <X size={12} />
+      </button>
+      {RESIZE_HANDLES.map((h) => (
+        <span
+          key={h.key}
+          className="widget-rh"
+          style={{ ...h.style, cursor: h.cursor }}
+          aria-label={`${h.key} 缩放`}
+          onMouseDown={(e) => {
+            if (e.button !== 0 || !isTauri) return;
+            e.preventDefault();
+            getCurrentWindow().startResizeDragging(h.dir).catch(() => {});
+          }}
+        />
+      ))}
+
+      {/* 右键迷你菜单 */}
+      {menu && (
+        <div className="widget-menu" style={{ left: menu.x, top: menu.y }}>
+          <button onClick={toggleSeconds}>
+            <span className="widget-menu__tick">{showSeconds ? "✓" : ""}</span>
+            显示秒
+          </button>
+          <button onClick={backToFullscreen}>回到全屏</button>
+          <button onClick={exitApp}>退出</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 单个滚动数字(里程表式):值变化时旧值上滚渐隐、新值自下入位渐显(340ms),
+ * 行程约 1/3 字高,结束后卸载过渡层。无卡片、无 3D 翻页。
+ */
+function WipeDigit({ value }: { value: number }) {
+  const [shown, setShown] = useState(value);
+  const [rolling, setRolling] = useState(false);
+
+  useEffect(() => {
+    if (value === shown) return;
+    setRolling(true);
+    const t = window.setTimeout(() => {
+      setShown(value);
+      setRolling(false);
+    }, 340);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <span className="roll-digit" aria-label={String(rolling ? value : shown)}>
+      <span className={rolling ? "roll-digit__layer roll-digit__layer--out" : "roll-digit__layer"}>
+        {shown}
+      </span>
+      {rolling && <span className="roll-digit__layer roll-digit__layer--in">{value}</span>}
+    </span>
+  );
+}
+
+/** 一组两位滚动数字,自动补零 */
+function WipeGroup({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(99, Math.floor(value)));
+  return (
+    <span className="inline-flex" style={{ gap: "2px" }}>
+      <WipeDigit value={Math.floor(v / 10)} />
+      <WipeDigit value={v % 10} />
+    </span>
+  );
+}
