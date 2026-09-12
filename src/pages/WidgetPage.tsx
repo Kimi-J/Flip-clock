@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { X } from "lucide-react";
 import FlipCardGroup from "@/components/FlipCardGroup";
 import { useClockTime, type ClockTime } from "@/hooks/useClockTime";
@@ -17,11 +17,21 @@ const SKIN_BASE: Record<WidgetSkinName, { w: number; h: number }> = {
   mecha: { w: 304, h: 156 },
 };
 
-/** 缩放手柄(右上角留给 X,只设其余三角;API 的 ResizeDirection 是未导出联合,用字面量) */
+/** 各皮肤缩放边界(逻辑像素,与 Rust SkinGeom 同值):中心缩放的宽度钳制范围 */
+const SKIN_LIMITS: Record<WidgetSkinName, { minW: number; maxW: number }> = {
+  ticket: { minW: 260, maxW: 680 },
+  mecha: { minW: 240, maxW: 608 },
+};
+
+/**
+ * 缩放手柄:中心固定向四周等比缩放(右上角留给 X)。
+ * sx/sy = 手柄所在角的方向符号(左/上为 -1,右/下为 +1),用于计算
+ * 拖拽位移在"该角向外对角线"上的投影。
+ */
 const RESIZE_HANDLES = [
-  { key: "nw", dir: "NorthWest", cursor: "nwse-resize", style: { top: 3, left: 3 } },
-  { key: "sw", dir: "SouthWest", cursor: "nesw-resize", style: { bottom: 3, left: 3 } },
-  { key: "se", dir: "SouthEast", cursor: "nwse-resize", style: { bottom: 3, right: 3 } },
+  { key: "nw", sx: -1, sy: -1, cursor: "nwse-resize", style: { top: 3, left: 3 } },
+  { key: "sw", sx: -1, sy: 1, cursor: "nesw-resize", style: { bottom: 3, left: 3 } },
+  { key: "se", sx: 1, sy: 1, cursor: "nwse-resize", style: { bottom: 3, right: 3 } },
 ] as const;
 
 /**
@@ -34,6 +44,19 @@ export default function WidgetPage() {
   const { is24Hour, widgetShowSeconds, widgetSkin, toggleWidgetSeconds, setWidgetSkin } = useClockStore();
   const time = useClockTime(is24Hour);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // 右键菜单按实际渲染尺寸钳制到窗口内(useLayoutEffect 绘制前修正,无闪跳)。
+  // 小窗可缩到比菜单还小,位置钳制不够,配合 CSS max-height+滚动兜底。
+  useLayoutEffect(() => {
+    const el = menuRef.current;
+    if (!menu || !el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const nx = Math.max(4, Math.min(menu.x, window.innerWidth - w - 4));
+    const ny = Math.max(4, Math.min(menu.y, window.innerHeight - h - 4));
+    if (nx !== menu.x || ny !== menu.y) setMenu({ x: nx, y: ny });
+  }, [menu]);
 
   const base = SKIN_BASE[widgetSkin];
 
@@ -126,6 +149,73 @@ export default function WidgetPage() {
     dragRef.current = null;
   };
 
+  // 中心固定缩放:弃用原生 startResizeDragging——
+  // 1) NW/SW 方向缩放时 Windows 只锚定右下角,而 Rust 侧 Resized 长宽比矫正
+  //    用 set_size(以左上为锚),两个锚点互相拉扯 → 右下角随缩放漂移;
+  // 2) 斜向拖拽偏离对角线时,原生尺寸与矫正值反复拉锯 → 频繁闪烁。
+  // 改为 pointer 捕获 + setPosition/setSize 手动实现:窗口中心恒定,
+  // 拖拽位移投影到皮肤对角线方向得出缩放量,长宽比在 JS 侧先行锁定,
+  // Rust 侧矫正退化为差值 ≤1px 的 no-op 安全网。
+  const resizeRef = useRef<{
+    sx: number;
+    sy: number;
+    hx: number;
+    hy: number;
+    wx: number;
+    wy: number;
+    ww: number;
+    wh: number;
+    dpr: number;
+  } | null>(null);
+  const onResizePointerDown = (e: React.PointerEvent, hx: number, hy: number) => {
+    if (e.button !== 0 || !isTauri) return;
+    e.preventDefault();
+    const win = getCurrentWindow();
+    Promise.all([win.outerPosition(), win.outerSize()])
+      .then(([pos, size]) => {
+        resizeRef.current = {
+          sx: e.screenX,
+          sy: e.screenY,
+          hx,
+          hy,
+          wx: pos.x,
+          wy: pos.y,
+          ww: size.width,
+          wh: size.height,
+          dpr: window.devicePixelRatio || 1,
+        };
+      })
+      .catch(() => {});
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onResizePointerMove = (e: React.PointerEvent) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    // 统一逻辑单位:screenX 是 DIP,除回逻辑再投影,各 DPI 下灵敏度一致
+    const lx = (e.screenX - r.sx);
+    const ly = (e.screenY - r.sy);
+    const g = SKIN_BASE[widgetSkin];
+    const lim = SKIN_LIMITS[widgetSkin];
+    // 位移在"手柄向外对角线 (hx·W, hy·H)"上的投影系数 t(逻辑单位):
+    // 角点位移 t·(W,H),中心固定 → 宽高各增 2t·(W,H)(两侧对称)
+    const t = (lx * r.hx * g.w + ly * r.hy * g.h) / (g.w * g.w + g.h * g.h);
+    const minW = Math.ceil(lim.minW * r.dpr);
+    const maxW = Math.floor(lim.maxW * r.dpr);
+    const newW = Math.min(maxW, Math.max(minW, Math.round(r.ww + 2 * t * g.w * r.dpr)));
+    const newH = Math.round((newW * g.h) / g.w);
+    // 中心恒定:每帧从起点绝对值换算,无累积漂移
+    const cx = r.wx + r.ww / 2;
+    const cy = r.wy + r.wh / 2;
+    const win = getCurrentWindow();
+    win
+      .setPosition(new PhysicalPosition(Math.round(cx - newW / 2), Math.round(cy - newH / 2)))
+      .catch(() => {});
+    win.setSize(new PhysicalSize(newW, newH)).catch(() => {});
+  };
+  const endResize = () => {
+    resizeRef.current = null;
+  };
+
   return (
     <div
       className="widget-root"
@@ -133,11 +223,8 @@ export default function WidgetPage() {
       onClick={() => menu && setMenu(null)}
       onContextMenu={(e) => {
         e.preventDefault();
-        setMenu({
-          // 菜单含皮肤组(5 项)时更高,y 需留足空间防触底截断
-          x: Math.min(e.clientX, window.innerWidth - 132),
-          y: Math.min(e.clientY, window.innerHeight - 176),
-        });
+        // 先按点击点放置,布局副作用里按实际尺寸钳制进窗口
+        setMenu({ x: e.clientX, y: e.clientY });
       }}
     >
       {/* 拖拽面:任意位置可拖(手动阈值拖拽);按钮/手柄置于区外,避免吞点击 */}
@@ -166,17 +253,16 @@ export default function WidgetPage() {
           className="widget-rh"
           style={{ ...h.style, cursor: h.cursor }}
           aria-label={`${h.key} 缩放`}
-          onMouseDown={(e) => {
-            if (e.button !== 0 || !isTauri) return;
-            e.preventDefault();
-            getCurrentWindow().startResizeDragging(h.dir).catch(() => {});
-          }}
+          onPointerDown={(e) => onResizePointerDown(e, h.sx, h.sy)}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={endResize}
+          onPointerCancel={endResize}
         />
       ))}
 
       {/* 右键迷你菜单 */}
       {menu && (
-        <div className="widget-menu" style={{ left: menu.x, top: menu.y }}>
+        <div ref={menuRef} className="widget-menu" style={{ left: menu.x, top: menu.y }}>
           <button onClick={toggleWidgetSeconds}>
             <span className="widget-menu__tick">{widgetShowSeconds ? "✓" : ""}</span>
             显示秒

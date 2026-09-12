@@ -1302,6 +1302,9 @@ input[type="range"]::-webkit-slider-thumb {
   position: fixed;
   z-index: 40;
   min-width: 120px;
+  /* 窗口可缩到比菜单还小:超高时内部滚动,不被窗口边缘截断 */
+  max-height: calc(100vh - 8px);
+  overflow-y: auto;
   padding: 4px;
   background: #2b2417;
   border: 1px solid rgba(242, 234, 216, 0.2);
