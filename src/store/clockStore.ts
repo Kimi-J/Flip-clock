@@ -3,6 +3,8 @@ import { emit } from "@tauri-apps/api/event";
 
 export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink" | "clay";
 export type BackgroundMode = "minimal" | "aurora" | "starry";
+/** 小窗皮肤:与全屏主题正交的独立维度,皮肤自带完整配色与窗口几何 */
+export type WidgetSkinName = "ticket" | "mecha";
 
 export interface ClockSettings {
   theme: ThemeName;
@@ -11,6 +13,10 @@ export interface ClockSettings {
   showInfoBar: boolean;
   backgroundMode: BackgroundMode;
   screensaverEnabled: boolean;
+  /** 小窗专属:显示秒(与全屏 showSeconds 相互独立) */
+  widgetShowSeconds: boolean;
+  /** 小窗专属:皮肤选择 */
+  widgetSkin: WidgetSkinName;
 }
 
 const DEFAULTS: ClockSettings = {
@@ -20,6 +26,8 @@ const DEFAULTS: ClockSettings = {
   showInfoBar: true,
   backgroundMode: "minimal",
   screensaverEnabled: false,
+  widgetShowSeconds: true,
+  widgetSkin: "ticket",
 };
 
 /** 部分设置补全为完整设置(缺省项回落默认值) */
@@ -31,6 +39,8 @@ function applyDefaults(s: Partial<ClockSettings>): ClockSettings {
     showInfoBar: s.showInfoBar ?? DEFAULTS.showInfoBar,
     backgroundMode: s.backgroundMode ?? DEFAULTS.backgroundMode,
     screensaverEnabled: s.screensaverEnabled ?? DEFAULTS.screensaverEnabled,
+    widgetShowSeconds: s.widgetShowSeconds ?? DEFAULTS.widgetShowSeconds,
+    widgetSkin: s.widgetSkin ?? DEFAULTS.widgetSkin,
   };
 }
 
@@ -41,6 +51,8 @@ interface ClockStore extends ClockSettings {
   toggleInfoBar: () => void;
   setBackgroundMode: (m: BackgroundMode) => void;
   setScreensaverEnabled: (v: boolean) => void;
+  toggleWidgetSeconds: () => void;
+  setWidgetSkin: (s: WidgetSkinName) => void;
   /** 多窗口同步:用事件携带的最新快照(或 localStorage)恢复设置 */
   rehydrate: (patch?: Partial<ClockSettings>) => void;
 }
@@ -99,6 +111,17 @@ export const useClockStore = create<ClockStore>((set) => ({
     set({ screensaverEnabled });
     persist(getSnapshot({ screensaverEnabled }));
   },
+  toggleWidgetSeconds: () => {
+    set((s) => {
+      const widgetShowSeconds = !s.widgetShowSeconds;
+      persist(getSnapshot({ widgetShowSeconds }));
+      return { widgetShowSeconds };
+    });
+  },
+  setWidgetSkin: (widgetSkin) => {
+    set({ widgetSkin });
+    persist(getSnapshot({ widgetSkin }));
+  },
   rehydrate: (patch) => {
     set(applyDefaults(patch ?? loadSettings()));
   },
@@ -113,6 +136,8 @@ function getSnapshot(patch: Partial<ClockSettings>): ClockSettings {
     showInfoBar: patch.showInfoBar ?? s.showInfoBar,
     backgroundMode: patch.backgroundMode ?? s.backgroundMode,
     screensaverEnabled: patch.screensaverEnabled ?? s.screensaverEnabled,
+    widgetShowSeconds: patch.widgetShowSeconds ?? s.widgetShowSeconds,
+    widgetSkin: patch.widgetSkin ?? s.widgetSkin,
   };
 }
 
@@ -145,4 +170,10 @@ export const BACKGROUND_OPTIONS: { value: BackgroundMode; label: string }[] = [
   { value: "minimal", label: "极简" },
   { value: "aurora", label: "极光" },
   { value: "starry", label: "星空" },
+];
+
+/** 小窗皮肤选项(新皮肤在此追加) */
+export const WIDGET_SKIN_OPTIONS: { value: WidgetSkinName; label: string }[] = [
+  { value: "ticket", label: "票根" },
+  { value: "mecha", label: "机械台钟" },
 ];

@@ -1332,3 +1332,241 @@ input[type="range"]::-webkit-slider-thumb {
   width: 14px;
   color: #c9a86a;
 }
+
+/* ==================== 桌面小部件 · 机械台钟皮肤(Split-Flap) ==================== */
+/* 忠实还原电磁翻页钟:深色金属机身 + 贯穿铰链轴 + 沉头螺丝 + 近黑卡仓。
+   皮肤自带完整配色与几何(机身 264×116,窗口 304×156),不跟随主题也不套用票根尺寸 */
+
+/* 投影画在包装上:范围须小于窗口四边 20px 留白,否则被窗口边缘硬切 */
+.mecha-wrap {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+
+/* 机身:#26262b 底 + 顶边高光 + 底边切削线 + 极淡竖纹拉丝 */
+.mecha {
+  position: relative;
+  width: 264px;
+  height: 116px;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.012) 2px 3px),
+    #26262b;
+  border-top: 1px solid #3d3d44;
+  border-bottom: 1px solid #101012;
+  /* 翻页卡变量局部覆盖:近黑卡仓里的近黑卡片,米白 Anton 数字 */
+  --card-w: 0.62em;
+  --card-h: 1.2em;
+  --card-from: #101013;
+  --card-to: #0d0d10;
+  --digit: #efe6d0;
+  --digit-shadow: rgba(0, 0, 0, 0.6);
+  --seam: #26262b;
+  --card-top-shine: rgba(255, 255, 255, 0.05);
+  --card-bottom-shade: rgba(0, 0, 0, 0.5);
+}
+
+/* 卡仓:内凹暗槽,包翻页卡组与冒号;6px 内边距落差 */
+.mecha__slot {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 16px;
+  height: 78px;
+  background: #0c0c0e;
+  border-radius: 9px;
+  box-shadow:
+    inset 0 2px 8px rgba(0, 0, 0, 0.8),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 卡组:小尺寸 em 化透视(9em,大尺寸扁平感过强) */
+.mecha .flip-unit {
+  perspective: 9em;
+}
+
+.mecha__cards {
+  display: flex;
+  align-items: center;
+  gap: 0.08em;
+}
+
+/* 冒号:两点氖管,1Hz 呼吸(半秒亮半秒暗,steps 硬切换) */
+.mecha__colon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3em;
+  width: 0.36em;
+  height: var(--card-h);
+  flex-shrink: 0;
+}
+
+.mecha__colon i {
+  width: 0.14em;
+  height: 0.14em;
+  border-radius: 50%;
+  background: #3a3a41;
+  box-shadow: 0 0 0.05em rgba(0, 0, 0, 0.9);
+  animation: mecha-colon-breathe 1s steps(1, end) infinite;
+}
+
+@keyframes mecha-colon-breathe {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 铰链轴:横贯卡仓中缝(= 翻页卡中线),z-index 压翻片(翻片 10 / 接缝 15) */
+.mecha__hinge {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 50%;
+  height: 5px;
+  transform: translateY(-50%);
+  background: #0c0c0e;
+  border-radius: 3px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  z-index: 16;
+  pointer-events: none;
+}
+
+/* 轴帽:两端 9px,径向高光的金属圆钮 */
+.mecha__cap {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 35% 30%, #55555e, #3a3a41 60%, #26262b);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.mecha__cap--l {
+  left: -2px;
+}
+
+.mecha__cap--r {
+  right: -2px;
+}
+
+/* 沉头螺丝:四角 7px 圆 + 一字槽(各不同角度) */
+.mecha__screw {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #17171a;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.mecha__screw::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.mecha__screw--tl {
+  top: 5px;
+  left: 5px;
+}
+.mecha__screw--tl::after {
+  transform: translateY(-50%) rotate(24deg);
+}
+
+.mecha__screw--tr {
+  top: 5px;
+  right: 5px;
+}
+.mecha__screw--tr::after {
+  transform: translateY(-50%) rotate(-38deg);
+}
+
+.mecha__screw--bl {
+  bottom: 5px;
+  left: 5px;
+}
+.mecha__screw--bl::after {
+  transform: translateY(-50%) rotate(61deg);
+}
+
+.mecha__screw--br {
+  bottom: 5px;
+  right: 5px;
+}
+.mecha__screw--br::after {
+  transform: translateY(-50%) rotate(-13deg);
+}
+
+/* 底部蚀刻:阴刻感小字 */
+.mecha__engrave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  text-align: center;
+  font-family: "Oswald", sans-serif;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #4a4a52;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+/* 机械皮肤下的窗体控件配色:X / 缩放手柄 / 右键菜单换深灰金属风 */
+.widget-root[data-skin="mecha"] .widget-x {
+  background: rgba(58, 58, 65, 0.92);
+  color: #efe6d0;
+  border-color: rgba(239, 230, 208, 0.35);
+}
+
+.widget-root[data-skin="mecha"] .widget-x:hover {
+  background: #efe6d0;
+  color: #26262b;
+  border-color: transparent;
+}
+
+.widget-root[data-skin="mecha"] .widget-rh {
+  background: rgba(58, 58, 65, 0.92);
+  border-color: rgba(239, 230, 208, 0.35);
+}
+
+.widget-root[data-skin="mecha"] .widget-rh:hover {
+  background: #4a4a52;
+}
+
+.widget-root[data-skin="mecha"] .widget-menu {
+  background: #26262b;
+  border-color: rgba(239, 230, 208, 0.18);
+}
+
+.widget-root[data-skin="mecha"] .widget-menu button {
+  color: #efe6d0;
+}
+
+.widget-root[data-skin="mecha"] .widget-menu button:hover {
+  background: rgba(239, 230, 208, 0.1);
+}
+
+.widget-root[data-skin="mecha"] .widget-menu__tick {
+  color: #8b8b96;
+}

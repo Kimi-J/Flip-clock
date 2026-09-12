@@ -501,8 +501,11 @@ mod app_settings {
         window_mode: Option<String>,
         /// 小部件窗口位置(物理坐标);None = 默认主屏右下角
         widget_pos: Option<(i32, i32)>,
-        /// 小部件窗口尺寸(物理像素);None = 默认 340×152 逻辑像素
+        /// 小部件窗口尺寸(物理像素);None = 皮肤默认尺寸(逻辑像素)
         widget_size: Option<(u32, u32)>,
+        /// 小部件皮肤:"ticket"(票根,默认) | "mecha"(机械台钟);
+        /// 决定建窗几何(基准尺寸/长宽比/min/max),前端为同步权威方
+        widget_skin: Option<String>,
     }
 
     fn settings_dir() -> PathBuf {
@@ -565,6 +568,18 @@ mod app_settings {
     pub fn save_widget_size(w: u32, h: u32) {
         let mut s = load();
         s.widget_size = Some((w, h));
+        save(&s);
+    }
+
+    pub fn load_widget_skin() -> String {
+        load()
+            .widget_skin
+            .unwrap_or_else(|| "ticket".to_string())
+    }
+
+    pub fn save_widget_skin(skin: &str) {
+        let mut s = load();
+        s.widget_skin = Some(skin.to_string());
         save(&s);
     }
 }
@@ -1029,9 +1044,62 @@ mod widget_window {
     use tauri::{AppHandle, Manager};
 
     pub const PREFIX: &str = "widget-";
-    /// 逻辑尺寸:票根 300×112 + 四边余量(微倾/阴影/撕口外溢)
-    const W: f64 = 340.0;
-    const H: f64 = 152.0;
+
+    /// 皮肤几何(逻辑像素):基准窗口尺寸 + 缩放边界。
+    /// 票根:票面 300×112 + 四边余量(微倾/阴影/撕口外溢);
+    /// 机械台钟:机身 264×116 + 四边 20px 留白供投影(roadmap 规格)。
+    pub struct SkinGeom {
+        pub w: f64,
+        pub h: f64,
+        pub min_w: f64,
+        pub min_h: f64,
+        pub max_w: f64,
+        pub max_h: f64,
+    }
+
+    /// 皮肤缓存:Resized 事件高频触发 aspect 矫正,不能每次读 settings.json;
+    /// 首次使用时从磁盘加载,之后由 set_widget_skin 命令更新
+    static SKIN: Mutex<Option<String>> = Mutex::new(None);
+
+    pub fn skin() -> String {
+        let mut g = SKIN.lock().unwrap_or_else(|e| e.into_inner());
+        if g.is_none() {
+            *g = Some(app_settings::load_widget_skin());
+        }
+        g.clone().unwrap_or_else(|| "ticket".to_string())
+    }
+
+    pub fn set_skin(skin: &str) {
+        *SKIN.lock().unwrap_or_else(|e| e.into_inner()) = Some(skin.to_string());
+    }
+
+    pub fn geom() -> SkinGeom {
+        if skin() == "mecha" {
+            SkinGeom {
+                w: 304.0,
+                h: 156.0,
+                min_w: 240.0,
+                min_h: 124.0,
+                max_w: 608.0,
+                max_h: 312.0,
+            }
+        } else {
+            SkinGeom {
+                w: 340.0,
+                h: 152.0,
+                min_w: 260.0,
+                min_h: 116.0,
+                max_w: 680.0,
+                max_h: 304.0,
+            }
+        }
+    }
+
+    /// 按当前皮肤长宽比,由宽度换算目标高度(物理像素;比例与 DPI 无关)
+    pub fn aspect_height(w: u32) -> u32 {
+        let g = geom();
+        ((w as f64) * (g.h / g.w)).round() as u32
+    }
 
     static LABEL_SEQ: AtomicU32 = AtomicU32::new(0);
     static LAST_SAVE: Mutex<Option<Instant>> = Mutex::new(None);
@@ -1053,25 +1121,27 @@ mod widget_window {
     }
 
     /// 创建小窗:隐藏创建 → 取物理尺寸 → 恢复/计算位置 → show(与全屏建窗序列同构)
+    /// 几何(基准尺寸/min/max)按当前皮肤取值,不强制套用票根
     pub fn create(app: &AppHandle) {
+        let g = geom();
         let mut builder = tauri::WebviewWindowBuilder::new(
             app,
             next_label(),
             tauri::WebviewUrl::App("index.html".into()),
         )
-        .title("Flip Clock · 票根")
+        .title("Flip Clock · 小部件")
         .decorations(false)
         .transparent(true)
         .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
-        // 四角手柄经 startResizeDragging 缩放(需 resizable;票面随窗口等比缩放)
+        // 四角手柄经 startResizeDragging 缩放(需 resizable;皮肤随窗口等比缩放)
         .resizable(true)
-        .min_inner_size(260.0, 116.0)
-        .max_inner_size(680.0, 304.0)
+        .min_inner_size(g.min_w, g.min_h)
+        .max_inner_size(g.max_w, g.max_h)
         .focused(false)
         .visible(false)
-        .inner_size(W, H)
+        .inner_size(g.w, g.h)
         .initialization_script("window.__LAUNCH_MODE__ = 'widget';");
 
         #[cfg(windows)]
@@ -1095,7 +1165,7 @@ mod widget_window {
                 // 默认:主屏右下角(留出任务栏高度)
                 let phys = window
                     .outer_size()
-                    .unwrap_or(tauri::PhysicalSize::new(W as u32, H as u32));
+                    .unwrap_or(tauri::PhysicalSize::new(g.w as u32, g.h as u32));
                 match crate::monitors::enumerate().and_then(|ms| {
                     ms.iter().find(|m| m.is_primary).cloned().or_else(|| ms.first().cloned())
                 }) {
@@ -1122,10 +1192,10 @@ mod widget_window {
         }
     }
 
-    /// 锁定长宽比(340:152):Resized 时以宽为准矫正高。
+    /// 锁定当前皮肤长宽比(票根 340:152 / 机械台钟 304:156):Resized 时以宽为准矫正高。
     /// 矫正自身会再触发一次 Resized,但那时差值为 0 → 天然收敛,不自激。
     pub fn enforce_aspect(window: &tauri::Window, w: u32, h: u32) {
-        let target_h = ((w as f64) * (H / W)).round() as u32;
+        let target_h = aspect_height(w);
         if target_h.abs_diff(h) > 1 {
             let _ = window.set_size(tauri::PhysicalSize::new(w, target_h));
         }
@@ -1426,6 +1496,32 @@ async fn set_window_mode(app: tauri::AppHandle, mode: String) -> Result<(), Stri
     Ok(())
 }
 
+/// 切换小窗皮肤:落盘 + 更新几何缓存;皮肤变化时把已存在的小窗复位到
+/// 新皮肤默认尺寸(位置不动)。皮肤未变则为幂等 no-op——前端挂载时也会
+/// 调用它做自愈同步,不能因此重置用户保存的缩放。
+#[tauri::command]
+async fn set_widget_skin(app: tauri::AppHandle, skin: String) -> Result<(), String> {
+    if skin != "ticket" && skin != "mecha" {
+        return Err("未知小窗皮肤".to_string());
+    }
+    let changed = skin != widget_window::skin();
+    app_settings::save_widget_skin(&skin);
+    widget_window::set_skin(&skin);
+    if changed {
+        let _ = tauri::async_runtime::spawn(async move {
+            use tauri::Manager;
+            let g = widget_window::geom();
+            for w in app.webview_windows().into_values() {
+                if w.label().starts_with(widget_window::PREFIX) {
+                    // 逻辑尺寸:set_size 自动按 DPI 换算物理像素
+                    let _ = w.set_size(tauri::LogicalSize::new(g.w, g.h));
+                }
+            }
+        });
+    }
+    Ok(())
+}
+
 /// 屏保模式:所有显示器各建一个独立窗口铺满(不遵循"显示位置",保持既有行为)
 fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
     #[cfg(windows)]
@@ -1568,11 +1664,11 @@ pub fn run() {
                         widget_window::maybe_save_pos(pos.x, pos.y);
                     }
                 }
-                // 小窗缩放:先矫正长宽比(340:152),再按矫正值节流落盘
+                // 小窗缩放:先矫正当前皮肤长宽比,再按矫正值节流落盘
                 tauri::WindowEvent::Resized(size) => {
                     if window.label().starts_with(widget_window::PREFIX) {
                         widget_window::enforce_aspect(window, size.width, size.height);
-                        let h = ((size.width as f64) * (152.0 / 340.0)).round() as u32;
+                        let h = widget_window::aspect_height(size.width);
                         widget_window::maybe_save_size(size.width, h);
                     }
                 }
@@ -1625,6 +1721,7 @@ pub fn run() {
             set_selected_monitors,
             get_window_mode,
             set_window_mode,
+            set_widget_skin,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

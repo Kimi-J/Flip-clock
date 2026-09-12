@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import {
   BACKGROUND_OPTIONS,
   THEME_OPTIONS,
+  WIDGET_SKIN_OPTIONS,
   useClockStore,
 } from "@/store/clockStore";
 
@@ -32,12 +33,16 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     showInfoBar,
     backgroundMode,
     screensaverEnabled,
+    widgetSkin,
+    widgetShowSeconds,
     setTheme,
     toggle24Hour,
     toggleSeconds,
     toggleInfoBar,
     setBackgroundMode,
     setScreensaverEnabled,
+    setWidgetSkin,
+    toggleWidgetSeconds,
   } = useClockStore();
 
   const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -312,6 +317,35 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
             <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
               小部件为置顶票根小窗:拖拽移动,双击回全屏,右键菜单。
+            </p>
+          </Section>
+
+          {/* 桌面小部件(皮肤/显示秒为小窗独立设置,与全屏互不影响) */}
+          <Section title="桌面小部件">
+            <div className="flex gap-2">
+              {WIDGET_SKIN_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setWidgetSkin(opt.value);
+                    // 同步 Rust 侧:皮肤决定建窗几何(基准尺寸/长宽比/min/max),
+                    // 先落盘,之后切到小窗模式时直接按正确几何建窗
+                    if (isTauri) invoke("set_widget_skin", { skin: opt.value }).catch(() => {});
+                  }}
+                  className="flex-1 py-2 rounded-lg text-xs transition-all"
+                  style={{
+                    color: widgetSkin === opt.value ? "var(--bg-from)" : "var(--text-secondary)",
+                    background: widgetSkin === opt.value ? "var(--accent)" : "transparent",
+                    border: `1px solid ${widgetSkin === opt.value ? "var(--accent)" : "var(--panel-border)"}`,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <ToggleRow label="显示秒" checked={widgetShowSeconds} onChange={toggleWidgetSeconds} />
+            <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              小窗皮肤与显示秒独立于全屏设置,修改后即时生效。
             </p>
           </Section>
 
