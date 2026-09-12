@@ -1122,6 +1122,15 @@ mod widget_window {
         }
     }
 
+    /// 锁定长宽比(340:152):Resized 时以宽为准矫正高。
+    /// 矫正自身会再触发一次 Resized,但那时差值为 0 → 天然收敛,不自激。
+    pub fn enforce_aspect(window: &tauri::Window, w: u32, h: u32) {
+        let target_h = ((w as f64) * (H / W)).round() as u32;
+        if target_h.abs_diff(h) > 1 {
+            let _ = window.set_size(tauri::PhysicalSize::new(w, target_h));
+        }
+    }
+
     /// Resized 事件节流落盘(与位置共用节流阀:同一次拖动手柄的连发只写一次)
     pub fn maybe_save_size(w: u32, h: u32) {
         let mut guard = LAST_SAVE.lock().unwrap_or_else(|e| e.into_inner());
@@ -1559,10 +1568,12 @@ pub fn run() {
                         widget_window::maybe_save_pos(pos.x, pos.y);
                     }
                 }
-                // 小窗缩放:物理尺寸节流落盘
+                // 小窗缩放:先矫正长宽比(340:152),再按矫正值节流落盘
                 tauri::WindowEvent::Resized(size) => {
                     if window.label().starts_with(widget_window::PREFIX) {
-                        widget_window::maybe_save_size(size.width, size.height);
+                        widget_window::enforce_aspect(window, size.width, size.height);
+                        let h = ((size.width as f64) * (152.0 / 340.0)).round() as u32;
+                        widget_window::maybe_save_size(size.width, h);
                     }
                 }
                 _ => {}

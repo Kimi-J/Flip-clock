@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
@@ -112,14 +112,11 @@ export default function WidgetPage() {
     dragRef.current = null;
   };
 
-  // 条形码:固定种子伪随机条宽,不随时间变化(票面印刷感)
-  const bars = useMemo(() => {
-    let s = 260906;
-    return Array.from({ length: 22 }, () => {
-      s = (s * 9301 + 49297) % 233280;
-      return 1 + (s % 3);
-    });
-  }, []);
+  // 条形码:手写宽窄相间图案(条宽 1-4px、间隔 1-2px,Code39 风格),固定不变
+  const bars: [number, number][] = [
+    [2, 1], [1, 2], [3, 1], [1, 1], [4, 1], [1, 2], [1, 1], [2, 1], [3, 2],
+    [1, 1], [1, 1], [4, 1], [1, 2], [2, 1], [1, 1], [3, 1], [1, 2], [2, 1],
+  ];
 
   const d = time.date;
   const dateText = `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日 ${WEEKDAYS[d.getDay()]}`;
@@ -170,8 +167,8 @@ export default function WidgetPage() {
             <div className="ticket__perf" />
             <div className="ticket__stub">
               <div className="ticket__barcode">
-                {bars.map((w, i) => (
-                  <span key={i} style={{ width: `${w}px` }} />
+                {bars.map(([w, g], i) => (
+                  <span key={i} style={{ width: `${w}px`, marginRight: `${g}px` }} />
                 ))}
               </div>
               <div className="ticket__no">{stubNo}</div>

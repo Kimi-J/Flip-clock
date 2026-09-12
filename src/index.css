@@ -1213,7 +1213,7 @@ input[type="range"]::-webkit-slider-thumb {
 .ticket__barcode {
   display: flex;
   align-items: stretch;
-  gap: 1px;
+  /* 无统一 gap:宽窄间隔由每条的 marginRight 给出(Code39 风格) */
   height: 34px;
 }
 
