@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "2.1.1"
+version = "3.0.1"
 description = "Flip Clock · 翻页时钟"
 authors = ["FlipClock"]
 license = ""

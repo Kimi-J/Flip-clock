@@ -23,6 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# AI 助手 / IDE 本地工作区
+# WorkBuddy 会话记忆(个人化、机器本地,不入库)
+.workbuddy/
+# Trae IDE 本地文件(白名单保留已入库的 documents/ 项目文档)
+.trae/*
+!.trae/documents/
+
 # ============================
 # 系统与缓存
 # ============================

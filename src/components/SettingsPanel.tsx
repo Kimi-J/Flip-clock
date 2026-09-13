@@ -236,6 +236,26 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </Section>
 
+          {/* 背景效果(与主题同为主界面观感设置) */}
+          <Section title="背景效果">
+            <div className="flex gap-2">
+              {BACKGROUND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setBackgroundMode(opt.value)}
+                  className="flex-1 py-2 rounded-lg text-xs transition-all"
+                  style={{
+                    color: backgroundMode === opt.value ? "var(--bg-from)" : "var(--text-secondary)",
+                    background: backgroundMode === opt.value ? "var(--accent)" : "transparent",
+                    border: `1px solid ${backgroundMode === opt.value ? "var(--accent)" : "var(--panel-border)"}`,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Section>
+
           {/* 制式 */}
           <Section title="时间制式">
             <ToggleRow label="24 小时制" checked={is24Hour} onChange={toggle24Hour} />
@@ -247,7 +267,33 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <ToggleRow label="显示日期信息" checked={showInfoBar} onChange={toggleInfoBar} />
           </Section>
 
-          {/* 显示位置 */}
+          {/* 窗口形态 */}
+          <Section title="窗口形态">
+            <div className="flex gap-2">
+              {([
+                ["fullscreen", "全屏"],
+                ["widget", "桌面小部件"],
+              ] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => handleWindowMode(v)}
+                  className="flex-1 py-2 rounded-lg text-xs transition-all"
+                  style={{
+                    color: winMode === v ? "var(--bg-from)" : "var(--text-secondary)",
+                    background: winMode === v ? "var(--accent)" : "transparent",
+                    border: `1px solid ${winMode === v ? "var(--accent)" : "var(--panel-border)"}`,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
+              小部件为置顶票根小窗:拖拽移动,双击回全屏,右键菜单。
+            </p>
+          </Section>
+
+          {/* 显示位置(全屏形态专属:勾选显示器) */}
           <Section title="显示位置">
             {monitors.length === 0 ? (
               <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -294,32 +340,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             )}
           </Section>
 
-          {/* 窗口形态 */}
-          <Section title="窗口形态">
-            <div className="flex gap-2">
-              {([
-                ["fullscreen", "全屏"],
-                ["widget", "桌面小部件"],
-              ] as const).map(([v, label]) => (
-                <button
-                  key={v}
-                  onClick={() => handleWindowMode(v)}
-                  className="flex-1 py-2 rounded-lg text-xs transition-all"
-                  style={{
-                    color: winMode === v ? "var(--bg-from)" : "var(--text-secondary)",
-                    background: winMode === v ? "var(--accent)" : "transparent",
-                    border: `1px solid ${winMode === v ? "var(--accent)" : "var(--panel-border)"}`,
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              小部件为置顶票根小窗:拖拽移动,双击回全屏,右键菜单。
-            </p>
-          </Section>
-
           {/* 桌面小部件(皮肤/显示秒为小窗独立设置,与全屏互不影响) */}
           <Section title="桌面小部件">
             <div className="flex gap-2">
@@ -347,26 +367,6 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             <p className="text-[10px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
               小窗皮肤与显示秒独立于全屏设置,修改后即时生效。
             </p>
-          </Section>
-
-          {/* 背景 */}
-          <Section title="背景效果">
-            <div className="flex gap-2">
-              {BACKGROUND_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setBackgroundMode(opt.value)}
-                  className="flex-1 py-2 rounded-lg text-xs transition-all"
-                  style={{
-                    color: backgroundMode === opt.value ? "var(--bg-from)" : "var(--text-secondary)",
-                    background: backgroundMode === opt.value ? "var(--accent)" : "transparent",
-                    border: `1px solid ${backgroundMode === opt.value ? "var(--accent)" : "var(--panel-border)"}`,
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </Section>
 
           {/* 屏幕保护程序 */}

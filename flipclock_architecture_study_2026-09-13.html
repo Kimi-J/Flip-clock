@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="UK9EKTSitFix2pFefBCtiN">
+<head data-page-node-id="GoB52mY0XI8Ak1qpvEVGmZ">
+<meta charset="UTF-8" data-page-node-id="qqH1uZ11YfgPAqy6yTLlNo">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="feGH7F6IvmYJoBqREpkvWG">
+<title>Flip Clock 项目架构研究报告 · 2026-09-13</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --border: #e5e3dc;
+    --text: #2c2c2a;
+    --muted: #6b6a64;
+    --accent: #534ab7;
+    --accent-soft: #eeedfe;
+    --teal: #0f6e56;
+    --teal-soft: #e1f5ee;
+    --amber: #854f0b;
+    --amber-soft: #faeeda;
+    --red: #a32d2d;
+    --red-soft: #fcebeb;
+    --code-bg: #f4f3ef;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 400 15px/1.75 -apple-system, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  }
+  .page { max-width: 980px; margin: 0 auto; padding: 48px 32px 96px; }
+  header.hero { border-bottom: 2px solid var(--border); padding-bottom: 28px; margin-bottom: 36px; }
+  .hero h1 { font-size: 26px; font-weight: 700; margin: 0 0 10px; letter-spacing: 0.5px; }
+  .hero p { color: var(--muted); margin: 4px 0; font-size: 14px; }
+  .hero .meta { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .hero .meta b { color: var(--text); font-weight: 500; }
+  nav.toc {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 24px; margin-bottom: 40px; font-size: 14px;
+  }
+  nav.toc b { display: block; margin-bottom: 8px; font-weight: 500; }
+  nav.toc a { color: var(--accent); text-decoration: none; margin-right: 18px; line-height: 2; white-space: nowrap; }
+  nav.toc a:hover { text-decoration: underline; }
+  section { margin-bottom: 48px; }
+  h2 {
+    font-size: 20px; font-weight: 700; margin: 0 0 18px; padding-left: 14px;
+    border-left: 4px solid var(--accent); line-height: 1.4;
+  }
+  h2 .no { color: var(--accent); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; }
+  p { margin: 10px 0; }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 5px 0; }
+  code {
+    font: 400 13px/1.6 "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+    background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 13px;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; margin: 14px 0; font-size: 13px; line-height: 1.65;
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; background: var(--surface); }
+  th, td { border: 1px solid var(--border); padding: 9px 13px; text-align: left; vertical-align: top; line-height: 1.6; }
+  th { background: var(--accent-soft); font-weight: 600; font-size: 13.5px; }
+  td code { white-space: nowrap; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 22px; margin: 14px 0;
+  }
+  .card.tip { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+  .card.warn { border-left: 4px solid var(--red); background: var(--red-soft); }
+  .card.note { border-left: 4px solid var(--accent); background: var(--accent-soft); }
+  .card b.title { display: block; margin-bottom: 6px; font-weight: 600; }
+  .kicker { font-size: 12.5px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+  .path { font-family: Consolas, monospace; font-size: 13px; color: var(--teal); }
+  .svgwrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin: 16px 0; }
+  .svgwrap figcaption { text-align: center; color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  footer { border-top: 1px solid var(--border); margin-top: 56px; padding-top: 20px; color: var(--muted); font-size: 13px; }
+  .arrow-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+  .arrow-flow .step {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 13px; font-size: 13.5px;
+  }
+  .arrow-flow .ar { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body data-page-node-id="pkthRfqNx46n9IQBex6HLa">
+<div class="page" data-page-node-id="PAMt32YK9UbLxQUcHBUdUO">
+
+<header class="hero" data-page-node-id="CGRCQZsuClHYPcpfXhtO0q">
+  <div class="kicker" data-page-node-id="LWMKIrvTfREL2mLIVaqRMl">PROJECT ARCHITECTURE STUDY</div>
+  <h1 data-page-node-id="iJIwT8lcMvc7CTf6IPOOxJ">Flip Clock · 翻页时钟 — 项目架构研究报告</h1>
+  <p data-page-node-id="RMCOm95eMkwqB7hZcINsHp">一个 Tauri 2 + React 18 桌面应用的全景解剖：前后端分层、单叶片翻页动画、多显示器窗口收敛、屏保与主程序的 WebView2 缓存共享、桌面小窗形态。</p>
+  <div class="meta" data-page-node-id="nhVvAFYTsGMAgIvug4Odk7">
+    研究对象：<b data-page-node-id="t2qqgJUhFwxOud12eiVj1H">Flip Clock v2.1.1</b>（Tauri 2 · Rust 后端 · React 前端）·
+    代码规模：前端 <b data-page-node-id="H49cGygpkga0rz6Zq3ZQwU">~2,400 行 TS/TSX + 1,604 行 CSS</b>，后端 <b data-page-node-id="0NVvwyVuvVbEAu7CK7A4iU">lib.rs 1,815 行</b>（单文件承载全部 Win32 FFI 与窗口编排）·
+    研究日期：2026-09-13
+  </div>
+</header>
+
+<nav class="toc" data-page-node-id="4cHgy2dpMeCEC0cpTMfueH">
+  <b data-page-node-id="JDP97S8B36Iu4CL7TKbrQE">目录</b>
+  <a href="#s1" data-page-node-id="VcuC9coN4pFMNGCfOWFvZN">1 · 总体架构</a>
+  <a href="#s2" data-page-node-id="Xf0HSHfCMsufgHAE2nmu3K">2 · 前端设计</a>
+  <a href="#s3" data-page-node-id="I3yWMtqJbGs4CPtEBGMRWW">3 · Rust 后端设计</a>
+  <a href="#s4" data-page-node-id="f8jm1NKvPlhLS1bypXhQaU">4 · 翻页动画实现</a>
+  <a href="#s5" data-page-node-id="EhEWJ2Mh8yCxSN4TIpRjfo">5 · 多显示器实现</a>
+  <a href="#s6" data-page-node-id="pt8peIlKlzRCYohYwHWU03">6 · 屏保与 GPU 缓存共享</a>
+  <a href="#s7" data-page-node-id="JAqJf7Q7T41wsdukG4B3DW">7 · 小窗形态实现</a>
+  <a href="#s8" data-page-node-id="3rT5i4zBwnmdIFPl4uabyG">8 · 工程决策清单</a>
+</nav>
+
+<!-- ==================== 1 总体架构 ==================== -->
+<section id="s1" data-page-node-id="T45aYTDqoTStrgsk9b9nCu">
+  <h2 data-page-node-id="t1kNvkzIwXONx2AXDN6ZsN"><span class="no" data-page-node-id="Dus09zsnDxP0E5vg1yoUqt">1</span>总体架构</h2>
+
+  <p data-page-node-id="P26Qw2fGZuk59M2MmdBCM2">这个项目最核心的架构特点：<b data-page-node-id="3bCt5SjiMhOhf43jDj24qW">一个二进制、六种运行身份、四类窗口家族，全部共享同一份前端产物和同一个 WebView2 数据目录</b>。</p>
+
+  <p data-page-node-id="24an21aFECdli9GErj7fgx">应用只有一个 <code data-page-node-id="tbgA4A01r29LmiESka3V3V">app.exe</code>。启动时 Rust 端解析命令行参数决定运行模式（Windows 屏保协议）：</p>
+
+  <table data-page-node-id="diQLjfIdyKllwZShTUqGKD">
+    <tr data-page-node-id="MoG0BOSuqzzrVYZJkEuMZU"><th data-page-node-id="9CbMcZhKfIJDTN3EPUULHT">命令行</th><th data-page-node-id="KY8WQQCHzoDqidfrZfYf4H">模式</th><th data-page-node-id="UGBpd2WlOw6RDygREHxLmL">行为</th><th data-page-node-id="Xh2A98lztFFXLG0CKQdMTY">窗口</th></tr>
+    <tr data-page-node-id="igycFGDOAHylO2REXSaS86"><td data-page-node-id="KFuIANUDmI4w5TYg6Detho"><code data-page-node-id="TSDGYJ2oxQpCqXqxQjddx3">（无）</code></td><td data-page-node-id="MYAs5eLV6uAoXznprryGSH">normal</td><td data-page-node-id="pXLi3tDY4QisLjm3yQlWxK">普通桌面时钟，抑制系统屏保</td><td data-page-node-id="setrxl21LkUg6IQaORKGS8"><code data-page-node-id="erD8bbmMvrM9MBg9CZHDhM">normal-N</code>（每选中显示器一个全屏窗）或 <code data-page-node-id="xrpkKqVlp0AwP191XPnqZB">widget-N</code>（小窗形态）</td></tr>
+    <tr data-page-node-id="gtVkASkDk5fezn3GGA19aF"><td data-page-node-id="qFlEf8t3H51P92WHBHD1FK"><code data-page-node-id="A86N1IWJBUfXsGvb7nyhhN">/s</code></td><td data-page-node-id="tGDAdLNgOPkEZdErzgkCVi">saver</td><td data-page-node-id="pAiuQgfnLsxxWWx59lO5Qw">屏保运行态，任意输入退出</td><td data-page-node-id="HmgHzZDLMn1px0WrBcaUhD"><code data-page-node-id="9vfk9kaEAyt6VJEkGQxbBw">saver-0..n</code>（<b data-page-node-id="Hjk0Yx8uIcJOyGD3a4D2e2">所有</b>显示器各一个置顶全屏窗）</td></tr>
+    <tr data-page-node-id="LY11bJUZtzc0BhEJqekaws"><td data-page-node-id="tX0ja2LuUDbK4UHrg9Y5Cw"><code data-page-node-id="3ZZkBMWmOQZumeph3w4tr5">/c</code></td><td data-page-node-id="RAh82j0t50tVD4IFbmhj6C">config</td><td data-page-node-id="YdYAm5dFRYU1usPkIiG573">配置模式，直接退出</td><td data-page-node-id="HIWWQoMwTAGQD4QDw1x3V1">无（配置由主应用设置面板处理）</td></tr>
+    <tr data-page-node-id="wuYKGWC7gTAG9MlKrTsUd3"><td data-page-node-id="kmfTVDl5nLTkqCXYxzipVv"><code data-page-node-id="DvJS7aPNSQansUu62eA1Ss">/p</code></td><td data-page-node-id="YYIWSjWAzhBTIxHrt7Thhh">preview</td><td data-page-node-id="WgCDMtrYfJFY6IDvAjW6Dt">预览模式，直接退出</td><td data-page-node-id="QGF5bMCuGBgcdPcDF49lMh">无（WebView2 无法 SetParent 嵌入外部 HWND）</td></tr>
+  </table>
+
+  <div class="svgwrap" data-page-node-id="ePxwBWE9fSjuz7VDyY5f6M">
+    <svg viewBox="0 0 880 560" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" data-page-node-id="EBo6zbUOds2znHZac2G4Pa">
+      <defs data-page-node-id="4pRwcUtnEYMg16RiUdVeE6">
+        <marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" data-page-node-id="MT4sayaNuffVhC4IBpjkjg">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" data-page-node-id="rxqFVU2xNhY5LQ96OC2Hes"/>
+        </marker>
+      </defs>
+      <style>
+        .bx { fill:#ffffff; stroke:#d8d5cc; stroke-width:1; rx:8; }
+        .t1 { font:600 14px sans-serif; fill:#2c2c2a; }
+        .t2 { font:400 12px sans-serif; fill:#6b6a64; }
+        .tc { font:400 12px sans-serif; fill:#534ab7; }
+      </style>
+
+      <rect x="20" y="16" width="840" height="70" rx="10" fill="#eeedfe" stroke="#a9a3dd" stroke-width="0.5" data-page-node-id="Ir6Dpt2o9BJN448I5kzkjh"/>
+      <text class="t1" x="36" y="42" data-page-node-id="Fqq6dBKscie9p1AdrAbwyO">app.exe（单一二进制，Windows 屏保 = 复制为 FlipClock.scr）</text>
+      <text class="t2" x="36" y="66" data-page-node-id="w4HbrspMhaPbCP6YDntKNu">detect_mode() 解析命令行 → normal / saver / config / preview</text>
+
+      <rect x="20" y="120" width="840" height="150" rx="10" fill="#ffffff" stroke="#d8d5cc" stroke-width="0.5" data-page-node-id="p4gl0GDMYwGTfmKAcZjGeK"/>
+      <text class="t1" x="36" y="144" data-page-node-id="ra0BWWcKjdU5KICJC7LM8g">窗口家族（按 label 前缀完全隔离，reconcile 只认自己的前缀）</text>
+      <rect x="40" y="162" width="188" height="88" rx="8" fill="#e6f1fb" stroke="#85b7eb" data-page-node-id="TzsVHvz0UrZ0lGSc6jf19y"/>
+      <text class="t1" x="134" y="186" text-anchor="middle" font-size="13" data-page-node-id="FuxioTmxMQhBbLz06gtJMi">normal-*</text>
+      <text class="t2" x="134" y="206" text-anchor="middle" data-page-node-id="60miUiDgliWwO0r4Jndo1D">每选中显示器一个</text>
+      <text class="t2" x="134" y="224" text-anchor="middle" data-page-node-id="EBsxvJNHJ20treFLgIN6Kp">全屏窗 · reconcile 收敛</text>
+      <rect x="244" y="162" width="188" height="88" rx="8" fill="#e1f5ee" stroke="#9fe1cb" data-page-node-id="VC9LQbCrgx200fwApFiEJP"/>
+      <text class="t1" x="338" y="186" text-anchor="middle" font-size="13" data-page-node-id="EFpWJeYdPKunBA1CwBtiaI">saver-*</text>
+      <text class="t2" x="338" y="206" text-anchor="middle" data-page-node-id="qgCessl5FA5YlO602s3t7e">所有显示器各一个</text>
+      <text class="t2" x="338" y="224" text-anchor="middle" data-page-node-id="Wq2FoeldWIvoL70jmnXF0n">置顶全屏窗（屏保态）</text>
+      <rect x="448" y="162" width="188" height="88" rx="8" fill="#faeeda" stroke="#fac775" data-page-node-id="AIWTGMmzwiI9WbqVs8LGy7"/>
+      <text class="t1" x="542" y="186" text-anchor="middle" font-size="13" data-page-node-id="JNNAFpYpGknslE7M6qlzOV">widget-*</text>
+      <text class="t2" x="542" y="206" text-anchor="middle" data-page-node-id="cNcbpwrVUAybY7BXTx0X3b">单个透明置顶小窗</text>
+      <text class="t2" x="542" y="224" text-anchor="middle" data-page-node-id="Dm9Clm8Efnpc7QkBGnCdyT">Moved/Resized 落盘</text>
+      <rect x="652" y="162" width="188" height="88" rx="8" fill="#fbeaf0" stroke="#f4c0d1" data-page-node-id="ohGBkFGuhxeJHbCddDxhM2"/>
+      <text class="t1" x="746" y="186" text-anchor="middle" font-size="13" data-page-node-id="wzIrCJEAIQltRvNbX03nLE">wmenu-*</text>
+      <text class="t2" x="746" y="206" text-anchor="middle" data-page-node-id="YCRFGuyrHAkQz3dhDFC1r6">小窗弹出菜单</text>
+      <text class="t2" x="746" y="224" text-anchor="middle" data-page-node-id="yARmGuTDxLWJM9Ay8RzAHj">失焦自关的独立窗</text>
+
+      <rect x="20" y="304" width="840" height="128" rx="10" fill="#ffffff" stroke="#d8d5cc" stroke-width="0.5" data-page-node-id="tEAjUTggG2nzPRYO0W9u6i"/>
+      <text class="t1" x="36" y="328" data-page-node-id="oSaQZT2FoHJnbAFYvgm32Y">前端（单一 index.html · Tauri initialization_script 注入 window.__LAUNCH_MODE__）</text>
+      <rect x="40" y="344" width="270" height="72" rx="8" fill="#f4f3ef" stroke="#d8d5cc" data-page-node-id="r0E1UMvXl9o3Rruc3Pbbin"/>
+      <text class="t1" x="175" y="372" text-anchor="middle" font-size="13" data-page-node-id="MaASnqtgeQZgAPcDHAG1IU">Home.tsx（normal/saver/preview）</text>
+      <text class="t2" x="175" y="394" text-anchor="middle" data-page-node-id="jOA8Q8UEaSXy6qXuQb8lNW">FlipCard 翻页 · saverMode 隐藏控件</text>
+      <rect x="330" y="344" width="250" height="72" rx="8" fill="#f4f3ef" stroke="#d8d5cc" data-page-node-id="1m8tiWs8fagB37UrisTwRE"/>
+      <text class="t1" x="455" y="372" text-anchor="middle" font-size="13" data-page-node-id="8Rh7UHZETbw69hsXdUytWU">WidgetPage.tsx（widget）</text>
+      <text class="t2" x="455" y="394" text-anchor="middle" data-page-node-id="00GWBpHybEiMEp00NJuNJu">票根/机械台钟 双皮肤</text>
+      <rect x="600" y="344" width="240" height="72" rx="8" fill="#f4f3ef" stroke="#d8d5cc" data-page-node-id="fcZ27dEkt5ayVBgaqbCFU4"/>
+      <text class="t1" x="720" y="372" text-anchor="middle" font-size="13" data-page-node-id="VqutfiovNE3N7sQ3lOIFEl">WidgetMenuPage.tsx（w-menu）</text>
+      <text class="t2" x="720" y="394" text-anchor="middle" data-page-node-id="h8Vu7gR7sDKlSdnUwx0YjV">设置菜单 · 固定本地字体栈</text>
+
+      <rect x="20" y="466" width="840" height="72" rx="10" fill="#e1f5ee" stroke="#9fe1cb" stroke-width="0.5" data-page-node-id="zOQnxFhBdfseE6GX7B9HYE"/>
+      <text class="t1" x="36" y="492" data-page-node-id="ZROn4HNyavUQ1nMWFrNcKK">共享 WebView2 用户数据目录 %LOCALAPPDATA%\com.flipclock.app\webview-data</text>
+      <text class="t2" x="36" y="516" data-page-node-id="hPuxCbnZs0Wye1qEFmGbBQ">app.exe 与 FlipClock.scr 同目录 → GPU 着色器/代码缓存互通 · 但同目录同时只允许一个进程</text>
+
+      <line x1="440" y1="86" x2="440" y2="118" stroke="#888780" stroke-width="1.5" marker-end="url(#a1)" data-page-node-id="G2UjBnnXo0awldM8bHNS7x"/>
+      <line x1="440" y1="270" x2="440" y2="302" stroke="#888780" stroke-width="1.5" marker-end="url(#a1)" data-page-node-id="4PdevuaBWRH7WA1GUXUOF5"/>
+      <line x1="440" y1="432" x2="440" y2="464" stroke="#888780" stroke-width="1.5" marker-end="url(#a1)" data-page-node-id="DrKZd9CPC0INBobEUedTND"/>
+    </svg>
+    <figcaption data-page-node-id="jDVojpZWOSEku1eKcIpXNs">图 1 · 单二进制多身份：命令行 → 窗口家族 → 前端页面 → 共享 WebView2 数据目录</figcaption>
+  </div>
+
+  <div class="card note" data-page-node-id="pNvIxaXdNaEmsKm9vHCdq3">
+    <b class="title" data-page-node-id="rSeYFzz1O8uOFgbAhhjHDz">为什么这套架构成立</b>
+    屏保本质上就是改了后缀的 exe（<code data-page-node-id="sBrPDaXhbgHIkuk7Z2KZGQ">fs::copy(exe, FlipClock.scr)</code>），所以主程序和屏保天然共享同一份代码与前端资源；窗口身份靠 <b data-page-node-id="KTRRoFwFS7ma41DMGW8BGA">label 前缀</b> 区分（<code data-page-node-id="6UCg2UvNQaDlonHCZzhNG3">normal-</code>/<code data-page-node-id="eAE9DOcbpaCKlPzBQ7oRrj">saver-</code>/<code data-page-node-id="XzhBehOvtVK7Fg278bvD7W">widget-</code>/<code data-page-node-id="CScJEoBOQxPGEMpwG5OFOG">wmenu-</code>），Rust 端的事件钩子（落盘、矫正、记账清理）用前缀精确匹配，互不干扰；前端身份靠 Rust 在 WebView 创建前用 <code data-page-node-id="0WqSH5kLm276iyrwTAtfb5">initialization_script</code> 注入 <code data-page-node-id="5hrzw3B5kJJPNNNmjQUEzz">window.__LAUNCH_MODE__</code>，页面 JS 第一行就能读到，避免 URL 重载导致的帧率下降。
+  </div>
+</section>
+
+<!-- ==================== 2 前端 ==================== -->
+<section id="s2" data-page-node-id="z3c9LVYhmJwWnZVcyj1mUj">
+  <h2 data-page-node-id="hc2Rq00swb41kKqWuDDov5"><span class="no" data-page-node-id="ZvJzqsIZyxP7xbpHn3Z08U">2</span>前端设计</h2>
+
+  <h3 data-page-node-id="C93FKbO9zP3Owkf8A13lGT">2.1 分层与职责</h3>
+  <table data-page-node-id="h3oAwCGJnwucZBbKrHzlMl">
+    <tr data-page-node-id="GGviBVj2vfKIDmW5F9UPbt"><th data-page-node-id="gk97j6pfJoXJvhItkXoHdj">模块</th><th data-page-node-id="Ub9KYZnUKLbcrM9OMvMyo0">文件</th><th data-page-node-id="i0SyFeeWDDPvrKZUUXhX06">职责要点</th></tr>
+    <tr data-page-node-id="aG73HckzgKQqB9K0rO7sct"><td data-page-node-id="iK9qFolzHWkyx8Sd7dJoQb">模式路由</td><td data-page-node-id="AHSpD4HOdmEuFrV2VJkjSp"><span class="path" data-page-node-id="Hnw64U6Q84RkUa6LrRzH9U">src/App.tsx</span></td><td data-page-node-id="b4JlOnMlEiDW4bIBGA75rL">读 <code data-page-node-id="CDdBYZBrODkvgLrkpaDZKY">__LAUNCH_MODE__</code>（Rust 注入）→ 回退 URL query（浏览器开发）→ 分发到四个页面；挂全局 <code data-page-node-id="kZi0KaW4O0JtKEH0b2IRVU">settings-sync</code> 事件监听</td></tr>
+    <tr data-page-node-id="lkVeWM0IAtFi6P66Cd3qHX"><td data-page-node-id="PC8cHvpLxppPCtvTGeqh9g">状态</td><td data-page-node-id="oFvCHOBoKorrqqD0reXfg6"><span class="path" data-page-node-id="WGo2qirkl2eP1D7ewn7RfS">src/store/clockStore.ts</span></td><td data-page-node-id="wDetqaH1qSuZNlG9zVXq1U">Zustand，8 项设置；localStorage 持久化 + 旧值迁移（particles→starry）；每次修改广播完整快照</td></tr>
+    <tr data-page-node-id="3WMOAtZwRop7tDQxuhYlLm"><td data-page-node-id="SIeAttf6gFudYjSt8WElHb">时间源</td><td data-page-node-id="9ddqzXEBN3ISb3R2DLXOPk"><span class="path" data-page-node-id="g4sVHHljjuBLjSs1mr60UJ">src/hooks/useClockTime.ts</span></td><td data-page-node-id="cWhh8ciLYHBs6QCjCVOVCu">对齐秒边界的定时刷新</td></tr>
+    <tr data-page-node-id="JfaqCCRUjmn9QoFAgCzMmD"><td data-page-node-id="35D4dSqyqi6t3miFbwkxkn">展示组件</td><td data-page-node-id="8OiYxtsR4XkMTZLuj5HUU1"><span class="path" data-page-node-id="nYRclgWmeSC5AuwNDIwkLa">components/</span></td><td data-page-node-id="OTDttrPYMKBA5kFhv5MISC">FlipCard（单卡）、FlipCardGroup（两位数）、AmbientBackground（3 种背景）、InfoBar、ControlBar、SettingsPanel</td></tr>
+    <tr data-page-node-id="kEpAkRwz8TLH4pI90fKCXO"><td data-page-node-id="RLUb60ZgVps1CrsosCgBjE">页面</td><td data-page-node-id="VvCrTBfEex9htpDMDeLiG3"><span class="path" data-page-node-id="8nxtHps0Mhv1yrKdzMoFhD">pages/</span></td><td data-page-node-id="IiDDrrvx8ZLzOxYZFD8vSA">Home（全屏/屏保）、WidgetPage（小窗双皮肤）、WidgetMenuPage（菜单窗）、ConfigPage</td></tr>
+  </table>
+
+  <h3 data-page-node-id="q7o1NaGyf2FynR4tVtEGe9">2.2 双通道状态持久化（一个容易被忽视的设计）</h3>
+  <p data-page-node-id="4PvzPND7SmBkWWAB0mmE4b">设置存在<b data-page-node-id="02AH9YQ9rSiL47dx0D78xE">两个地方</b>，各有明确分工：</p>
+  <table data-page-node-id="qQoBNzCm2k234q8FJ94mMd">
+    <tr data-page-node-id="J7B37Y9qBZHR7hhm2MzcPL"><th data-page-node-id="mgqykNrF34VEbZD40x3opq"></th><th data-page-node-id="m6onQYt9vW9moyPhE2pcYN">前端 localStorage</th><th data-page-node-id="o0UffxblPMpyOj1Z9RbStQ">Rust 侧 settings.json（%APPDATA%）</th></tr>
+    <tr data-page-node-id="qHkHFYBlS831HPqH3iUyMV"><td data-page-node-id="L0AHqIRNjuJQdDUMPuH7At">存什么</td><td data-page-node-id="tHHZBZzHuoMV42R0suKEQx">主题、12/24 小时、显示秒、信息栏、背景、屏保开关、小窗皮肤/秒</td><td data-page-node-id="VgOEazaS7kDqBCmRcVHTHL">选中显示器 ID 列表、窗口形态（fullscreen/widget）、小窗位置/尺寸、皮肤</td></tr>
+    <tr data-page-node-id="UPwqoMT7YkRjMHAKbz99Q4"><td data-page-node-id="jhEdBref2islCUulytp69h">为什么</td><td data-page-node-id="4WdWPVHy1jKp1OWq2EezF7">纯 UI 偏好，WebView 内即可读写</td><td data-page-node-id="zTTQsKRwomKM7FlBarGJ93"><b data-page-node-id="sR1RpbrdBuuIFRdLkSSsOa">窗口在 setup 阶段创建时 WebView 尚未启动，读不到 localStorage</b>；建窗所需的几何信息必须在 Rust 侧先行可读</td></tr>
+    <tr data-page-node-id="2OsqtSCwURWXOtJngbk4jh"><td data-page-node-id="UsdlMOTBNPQDdgyh3pJQRh">同步方式</td><td data-page-node-id="RloghTOVuqliRU0rbdpVI5">跨窗口用 Tauri <code data-page-node-id="BbrqWDnW4450yxLbvFipL2">emit("settings-sync", 完整快照)</code>，接收方直接 <code data-page-node-id="MSzwsWnWivQF2v2Fe4iOtA">rehydrate</code>，自身接收幂等无回环</td><td data-page-node-id="c4YM0vVWCmJEqMhS2IJXgc">Rust 内存缓存（如皮肤 SKIN）+ 前端挂载时调 <code data-page-node-id="fazZylscZvn5fzLpoxcODy">set_widget_skin</code> 自愈同步（幂等 no-op）</td></tr>
+  </table>
+
+  <h3 data-page-node-id="Y7gsSZDtKEufPzoCWOhxsn">2.3 时间对齐：setTimeout + rAF 的组合</h3>
+  <pre data-page-node-id="rlLfpCwACjia0c2gISgFNB"><code data-page-node-id="oTyP6m4OQKlEsJIDf7KKMp">const tick = () =&gt; {
+  const now = new Date();
+  setTime(split(now, is24Hour));
+  const ms = now.getMilliseconds();
+  timer = window.setTimeout(() =&gt; { raf = requestAnimationFrame(tick); }, 1000 - ms);
+};</code></pre>
+  <p data-page-node-id="PtBj2zRIE36mNsucJgdBzH">不是简单的 <code data-page-node-id="dkntdidfiXoUVSTE2eAfmR">setInterval(1000)</code>：每次计算距下一个秒边界的剩余毫秒数再定时，消除累积漂移；套一层 <code data-page-node-id="lgbtcRs4rGnACkNtsFu4F9">requestAnimationFrame</code> 让状态更新对齐渲染帧，翻页动画起始帧不撕裂。</p>
+
+  <h3 data-page-node-id="l3H4Zyl9BXhIM5ufHMoAad">2.4 主题系统：CSS 变量 + data-theme 属性</h3>
+  <p data-page-node-id="VWshqWrh4voJ2VL3uRZEFA">10 套主题全部通过 <code data-page-node-id="LlXzA1zaxzPpcmjERUzmjk">html[data-theme="xxx"]</code> 切换一组 CSS 变量（<code data-page-node-id="dCcmavViXIysEYtgnfGfCt">--card-from/to</code>、<code data-page-node-id="B3TSQlXvR8YARpfvAwDo1W">--digit</code>、<code data-page-node-id="NWIpS1dMVGYUyAcSeAoYCX">--seam</code>、<code data-page-node-id="i8H3uC014tkjg8gnClU4FG">--bg-from/via/to</code>、<code data-page-node-id="tmOP6lqE2ZZNUJtxVOPZRP">--accent</code> 等），组件代码零分支。特殊主题用属性选择器做增量覆盖：voxel（像素界）覆盖字体为 Press Start 2P 并把卡片尺寸改为 px 绝对单位（字号缩小但卡片不变）；noir/pure（极简黑白）用 <code data-page-node-id="7HDJvzDwyXJRSZ7PisVVys">clip-path</code> 给卡片接缝处切出瓶颈凹口。</p>
+</section>
+
+<!-- ==================== 3 后端 ==================== -->
+<section id="s3" data-page-node-id="tV0Db4BrRfnM3CeZkspCp3">
+  <h2 data-page-node-id="pHmxBmQf1SZmdIrWNE0qyM"><span class="no" data-page-node-id="Tl2sSDRbMNl3kUaKPy55hW">3</span>Rust 后端设计</h2>
+
+  <h3 data-page-node-id="hLLQ8W3BrKmaTcsq1OyZl3">3.1 模块划分（单文件 lib.rs，按注释分区）</h3>
+  <table data-page-node-id="elhTmDeAKBZf61MFo3lCBV">
+    <tr data-page-node-id="68sUeGLuCExVv1QqJ2CfFz"><th data-page-node-id="NyvzoAZUCWL0KWtdITi6is">模块</th><th data-page-node-id="cRyD8zp9I1oGiDECGpp5ZC">核心内容</th></tr>
+    <tr data-page-node-id="YZ31gFiRIePlJDCnrvcVJO"><td data-page-node-id="ly1HnCZhGzJhJFFEMQjGpC"><code data-page-node-id="0HTmHcH9eH8vnh4DXDFdL1">screensaver</code></td><td data-page-node-id="AozqDje3V7ijk5yFlCY3cV">exe→.scr 复制、HKCU 注册表读写（含 GPO/杀软拦截的差异化诊断提示）</td></tr>
+    <tr data-page-node-id="nymUuYhudlH06UhgvyiTaf"><td data-page-node-id="hM0xDMetW6JnfdpEPQj1DP"><code data-page-node-id="8Hb92mYfjgYPhWHdXPf0KB">win_api</code></td><td data-page-node-id="Qj3FwUaPBU3K87xJbhRFay"><code data-page-node-id="6CbMMBT0SKOyg42ztW9uOO">SystemParametersInfoW</code> 屏保超时双向同步、<code data-page-node-id="kCrsBQK9zgmAy3Dbaczg46">SetThreadExecutionState</code> 屏保抑制</td></tr>
+    <tr data-page-node-id="sEOxazdLDKh7Lnr47AXKgv"><td data-page-node-id="MaMlk6eDB2eY1uqcfrfi8Q"><code data-page-node-id="ErJdUa0IKpLryMFTvz1dbf">monitors</code></td><td data-page-node-id="1R2FhzP0Yys7G2PFHC6G8h">显示器枚举 + 持久身份识别（全部手写 FFI）</td></tr>
+    <tr data-page-node-id="XF8qxpswBlTCuyCUsHiav4"><td data-page-node-id="5fjWk9K2H0RFd8bKbjhWge"><code data-page-node-id="RBWa3ihu7nu5EBFRGQJCun">app_settings</code></td><td data-page-node-id="WU4kXNgOohMwEEEdQsZ2za">settings.json 读写（serde <code data-page-node-id="vMsWEDY1eBLqWhRRbwGzdF">#[serde(default)]</code> 保证旧配置兼容）</td></tr>
+    <tr data-page-node-id="f2Nb4iKiXjrZci1uDw8uSK"><td data-page-node-id="s30FCvJqRMm2wngGdkw1sm"><code data-page-node-id="PPlKSqzPFwepzMEzqgru3V">window_manager</code></td><td data-page-node-id="xafDbfjDzcBGoLJwnHk9l1">normal- 全屏窗口的 reconcile 收敛状态机</td></tr>
+    <tr data-page-node-id="l70Ckf4eGiGz9tzHyH5kjf"><td data-page-node-id="rj4FK6nMKFZFcbUrG07fju"><code data-page-node-id="65AGoxwUbdOOGFx8Lk1nWZ">widget_window</code></td><td data-page-node-id="eY6cfEUQaWfkpQSuKBmcJ5">widget- 小窗：皮肤几何（SkinGeom）、位置校验、节流落盘、长宽比矫正</td></tr>
+    <tr data-page-node-id="6DBcLB8n284SralCDA3pV7"><td data-page-node-id="2Tp50JgD1J3cbggl28Z5VO"><code data-page-node-id="rKNeXTdfbJQXfvw5NqTU0p">widget_menu_window</code></td><td data-page-node-id="R6RrBXh2J62BvRlLoEf4R4">wmenu- 菜单弹窗</td></tr>
+    <tr data-page-node-id="8EFAESLftTykdHOx5SvWjE"><td data-page-node-id="DbRnSHHoUEfHjGLEHrgeej"><code data-page-node-id="HFstvrGknFSEaQxlgQFz5h">display_listener</code></td><td data-page-node-id="l8cp4zjRcRd2AyZ0Kt6Y1F">独立线程隐藏窗口接收 <code data-page-node-id="8uRhUZDHvOrj2yD8xgJx2T">WM_DISPLAYCHANGE</code>，300ms 防抖</td></tr>
+    <tr data-page-node-id="zBFTHiyjAGPVSzzlQp0NE4"><td data-page-node-id="n7Fb1UvymlQR14GfYh1gpE"><code data-page-node-id="YaQM3w0WL7HxvKLZXWWmv9">logging / crash_handler</code></td><td data-page-node-id="tAqhjB0Ek9ditIrJ7J6Jyn">诊断日志（MAIN 线程标记 + 序列号）+ <code data-page-node-id="FZnKg6VroHqf7Q43lBGp63">SetUnhandledExceptionFilter</code> 原生崩溃捕获</td></tr>
+  </table>
+
+  <h3 data-page-node-id="tcBkmX3nzvMWn7U5tCSK6f">3.2 线程模型：血泪换来的三条铁律</h3>
+  <div class="card warn" data-page-node-id="jBQWNV2LDBfCnMePtjHYOg">
+    <b class="title" data-page-node-id="6MGMXyR7Acpk3fx9iW1xqM">铁律一：build() 绝不能在主线程同步执行</b>
+    Windows 上主线程同步调用 <code data-page-node-id="GPcwxt9tMuAOAAkSQ6pgSy">WebviewWindowBuilder::build()</code> 会与 WebView2 初始化互等死锁（wry#583，Tauri 官方文档明确警告）。所有运行时建窗/改窗命令一律 <code data-page-node-id="kM8Vj3kj4hvr7BLrD3K0bv">async fn</code> + <code data-page-node-id="DWgtsTvVpDb2GVhvbXhNhd">tauri::async_runtime::spawn</code> 派发。唯一例外：启动路径（setup 回调，事件循环启动前）同步执行是安全的。
+  </div>
+  <div class="card warn" data-page-node-id="V9D1sWSjXYaURllFT2CEWH">
+    <b class="title" data-page-node-id="5SvhSLYa0QNxaO4VuqEmUZ">铁律二：绝不对已存在的全屏窗口做状态切换</b>
+    对已存在窗口调 <code data-page-node-id="U7nvNpssLo6yz79KPVmivv">set_fullscreen/set_position</code> 曾导致主线程与后台线程在窗口内部状态上互等、整进程卡死。显示器几何变化、形态切换一律<b data-page-node-id="97VrTmYMMcuKRMKQV3Zmsu">关旧建新</b>。
+  </div>
+  <div class="card warn" data-page-node-id="SbSHaBtIXYCkC8jf2ErePz">
+    <b class="title" data-page-node-id="Wf5AdTpi8pT1GzzaYVBC4g">铁律三：先建后关</b>
+    Tauri 默认「最后一个窗口关闭 = 进程退出」。若先关旧窗再建新窗，中间瞬间窗口数为零会直接退出。所以形态切换、reconcile 清理都遵守「先建新、建成功再关旧」。
+  </div>
+
+  <h3 data-page-node-id="p0ONtKg0LC2vEfcpxgBYx4">3.3 可观测性：给「闪退无痕迹」问题上的三道保险</h3>
+  <ul data-page-node-id="8s1tOQCugjoBcOG9waiUXS">
+    <li data-page-node-id="j7F209mKw9UQVM22oH1XZW"><b data-page-node-id="JFTacV2h46Drfd3huXb935">panic hook</b>：发布版无控制台，不挂钩子则 Rust panic 完全不可见；挂钩后写入 <code data-page-node-id="sAi0dfq3z9xEe96xB6FUfE">flipclock.log</code>。</li>
+    <li data-page-node-id="feJ3TTZ0obyCEAolUwYFcb"><b data-page-node-id="otjarOfc7aMFxkzZIzfl1b">SetUnhandledExceptionFilter</b>：访问违例/栈溢出/堆损坏这类硬崩溃不走 Rust panic 机制，此前表现为「日志戛然而止」。过滤器在进程咽气前写下异常码 + 地址（如 <code data-page-node-id="uUcy9jrSnUstHn5RpC9Hkq">0xC0000005 ACCESS_VIOLATION</code>）。</li>
+    <li data-page-node-id="6BMhU9lhDUZGQkbuWn5SNy"><b data-page-node-id="LqyjIJrqtBjkLuo2HWZj2C">MAIN 线程标记 + 序列号</b>：每条日志标注发出线程；卡死排查方法——找到最后一条 MAIN 日志即主线程卡住的位置。</li>
+  </ul>
+</section>
+
+<!-- ==================== 4 翻页动画 ==================== -->
+<section id="s4" data-page-node-id="NAzsGP9Vvnc9jWSebTQYtV">
+  <h2 data-page-node-id="cWDjW1qMaPQb1gxQScMhjG"><span class="no" data-page-node-id="yv7BbSKZypitLMp0XzrbHp">4</span>卡片翻页动画的具体实现</h2>
+
+  <p data-page-node-id="7CbACAHaEWJxizB8MrVIzm">这是本项目最有辨识度的部分：<b data-page-node-id="Y2FKaFX1cyaVL2nG75Pmi3">单叶片、双面、180° 连续翻转</b>（split-flap 的 CSS 还原），而不是常见的「上下两片各转 90°」拼合方案。</p>
+
+  <h3 data-page-node-id="u5EMNF8hF36iBAF4xxwrQ6">4.1 DOM 结构：三明治三层</h3>
+  <pre data-page-node-id="I2mKAHgdJZyM1UIEUpUHYe"><code data-page-node-id="rnwTvZBMnLlAVKLZLnbAVI">&lt;span class="flip-unit"&gt;              ← perspective: 900px（3D 舞台）
+  &lt;span class="flip-static--top"&gt;     ← 静态上半卡，显示新值上半（翻转开始瞬间就换新值）
+  &lt;span class="flip-static--bottom"&gt;  ← 静态下半卡，翻转中显旧值下半，结束才换新值
+  &lt;span class="flip-leaf"&gt;            ← 翻片（仅 flipping 时存在），绕下边缘转 180°
+    &lt;span class="flip-leaf__face--front"&gt;  ← 正面：旧值上半
+    &lt;span class="flip-leaf__face--back"&gt;   ← 背面：新值下半（backface-visibility: hidden）
+&lt;/span&gt;</code></pre>
+
+  <h3 data-page-node-id="HIchEN3zyAYLCBvSGi1kDM">4.2 状态机与时序（FlipCard.tsx）</h3>
+  <div class="arrow-flow" data-page-node-id="Sx2j0mpVNzUC1FgR1x9BzQ">
+    <span class="step" data-page-node-id="G8JnJaXDLwFNzZAhNPfG6h">value 变化</span><span class="ar" data-page-node-id="LISDXrO7NoSPUPRQmxdy8I">→</span>
+    <span class="step" data-page-node-id="G1KUin7ToYWi9TUbppGA9k">previous = current<br data-page-node-id="IU7lFXgQ8jkAeGVn1gR5QC">current = 新值（上半卡立即换新，被翻片正面遮挡，观众看不见）</span><span class="ar" data-page-node-id="m1MRVMNrBM2dp8vPc53GT8">→</span>
+    <span class="step" data-page-node-id="0SoC5tX62TDUkNNLMWrYt2">flipping = true<br data-page-node-id="zZ0SKpLEV0ShhlBwgNyfad">挂载翻片，CSS 动画 0.6s</span><span class="ar" data-page-node-id="UzmX2PcCbVsEucvmdeip3G">→</span>
+    <span class="step" data-page-node-id="mULGoFylXeoJHOyfGcQEA3">600ms 后 flipping = false<br data-page-node-id="9JacTrq0aTU45uovT1voIF">卸载翻片，下半卡换新值</span>
+  </div>
+
+  <p data-page-node-id="XBOnclDmRrz4a9ArcfVfWv">观众视角的完整时序（这是整个动画的精髓）：</p>
+  <table data-page-node-id="4WNlbonqG2VFxqYJC7dKnG">
+    <tr data-page-node-id="pb9IFdGm3ZutnWKrAQLnPE"><th data-page-node-id="OjpqYDn1bpMWZW9dmBS9JW">阶段</th><th data-page-node-id="Ua0zdF4sbEOq9cLwvByLdW">旋转角</th><th data-page-node-id="Xxnf5N00d76Ffo6OIXFOgF">观众看到</th></tr>
+    <tr data-page-node-id="OBBRrC5qrj6mm4Ch974ZQf"><td data-page-node-id="R8DVSn99ZKDhQN0vqGzzAm">前半程</td><td data-page-node-id="dif8bqE9qRmCkaNw3qNmgd">0° → 90°</td><td data-page-node-id="Bgwue2WHEXIpvSxb0YDIKu">翻片<b data-page-node-id="7VfAzlyOOQ3CAgRUmXz9MY">正面（旧值上半）</b>遮挡上半卡 → 上半=旧、下半=旧 → <b data-page-node-id="I3tkOgu7XjZPqSst1bHEsJ">完整旧值</b></td></tr>
+    <tr data-page-node-id="Ljswd4BBo9BvdMHFTUryAw"><td data-page-node-id="YqNIQOTAvGxz1oWc6F9Yez">过中线瞬间</td><td data-page-node-id="rUuvDJhHnqyzY7nhE75GQB">= 90°</td><td data-page-node-id="EZ7JhKfhtTYsjZWmkgsftu">翻片侧对观众（edge-on，视觉上是一条线），正面开始背向</td></tr>
+    <tr data-page-node-id="z6rCv0rUOo6Kjmwqhy2hmz"><td data-page-node-id="CzbFHUFXt42eFG312zwJLY">后半程</td><td data-page-node-id="XRcbVrjBq415NMHpobMKir">90° → 180°</td><td data-page-node-id="0qT7hb8eFSFG5nwVihVvfe">上半卡露出<b data-page-node-id="0zZIFaNP0n6ZoDKpSCmSuF">新值上半</b>；翻片<b data-page-node-id="wVNmsyUqYDKzIDrLtLu7CW">背面（新值下半）</b>朝向观众覆盖下半卡 → <b data-page-node-id="BdSC9SGg01HTHOZcVI7GE7">完整新值</b></td></tr>
+    <tr data-page-node-id="Ye8XC6BY0dMps3uCVIGTSD"><td data-page-node-id="GQ6Z1IsAMIsKPrGfTQEeOK">结束</td><td data-page-node-id="GDytHdLKIHDmXDBIMjcbVD">移除翻片</td><td data-page-node-id="blSqySQcecFYdNpiKAMsrs">上下半卡均为新值，静止</td></tr>
+  </table>
+
+  <div class="svgwrap" data-page-node-id="9pEZKD3d1zmkJvCgeVuLDd">
+    <svg viewBox="0 0 880 400" width="100%" role="img" xmlns="http://www.w3.org/2000/svg" data-page-node-id="XBnuAPuIwQzfgsv4uhzZEF">
+      <style>
+        .lbl { font:600 13px sans-serif; fill:#2c2c2a; }
+        .sub { font:400 12px sans-serif; fill:#6b6a64; }
+        .ang { font:600 12px sans-serif; fill:#534ab7; }
+        .cardTop { fill:#d9d5ea; stroke:#7f77dd; }
+        .cardBot { fill:#c8c3e4; stroke:#7f77dd; }
+        .leafF { fill:#ef9f27; stroke:#ba7517; }
+        .leafB { fill:#fac775; stroke:#ba7517; }
+        .seam { fill:#534ab7; }
+        .dg { font:700 44px sans-serif; fill:#3c3489; text-anchor:middle; }
+      </style>
+      <rect x="0" y="0" width="880" height="400" fill="none" data-page-node-id="sDby2ax0LYWhxJQ02B2Rsd"/>
+
+      <text class="lbl" x="150" y="34" text-anchor="middle" data-page-node-id="QQDiG0Bo1gunZvuBuFQeED">阶段① 翻转前 / 0°</text>
+      <text class="sub" x="150" y="52" text-anchor="middle" data-page-node-id="bPfCjnEM1qA78eQyob8IJi">旧值完整静止</text>
+      <g data-page-node-id="HZ6K9u89CnrRGOYLmMfLLQ">
+        <rect class="cardTop" x="110" y="70" width="80" height="55" rx="4" data-page-node-id="0mXdgVbOk96O0U3cSIpKzB"/>
+        <text class="dg" x="150" y="128" data-page-node-id="0B4JtgnVAO1AJLX4ojWT9X">4</text>
+        <rect class="seam" x="110" y="123" width="80" height="4" data-page-node-id="bAGF5aTRO98NEUMoFz8kpu"/>
+        <rect class="cardBot" x="110" y="127" width="80" height="55" rx="4" data-page-node-id="DrQsaabSOG1YKDgxcTFt8r"/>
+        <text class="sub" x="150" y="215" text-anchor="middle" data-page-node-id="crB8iKGVFzjTdmHEyM4Fqc">上半 旧4 · 下半 旧4</text>
+      </g>
+
+      <text class="lbl" x="440" y="34" text-anchor="middle" data-page-node-id="ZQqoeCX4DgN5HTVareOsa1">阶段② 0°→90° 翻片下倒</text>
+      <text class="sub" x="440" y="52" text-anchor="middle" data-page-node-id="Wi5RmGuTdyH5HbEAZFQxC4">翻片正面（旧值上半）遮挡上半卡</text>
+      <g data-page-node-id="R8iBR8mhlusCtEqMSVMSSO">
+        <rect class="cardTop" x="400" y="70" width="80" height="55" rx="4" fill="#efece2" stroke="#b4b2a9" data-page-node-id="cxCQNWyY9jOrMftd1EihcJ"/>
+        <text class="dg" x="440" y="128" fill="#b4b2a9" data-page-node-id="qpYGWyf7Kgg21wAxniILPf">5</text>
+        <rect class="seam" x="400" y="123" width="80" height="4" data-page-node-id="x6IPuWV5HnsSUb8nhUk9QP"/>
+        <rect class="cardBot" x="400" y="127" width="80" height="55" rx="4" data-page-node-id="gWIfYw3E6qjlENPvTPlad6"/>
+        <text class="dg" x="440" y="185" data-page-node-id="7kWritLja7qpaeA2Z6ZYn6">4</text>
+        <g transform="rotate(-24 440 125)" data-page-node-id="l2Nb2y3icuZyZbil6ItUGr">
+          <rect class="leafF" x="400" y="70" width="80" height="55" rx="4" data-page-node-id="2gsIQWkVp0qFaylDRRXHqT"/>
+          <text class="dg" x="440" y="128" fill="#412402" data-page-node-id="KP0P1EDLvMlqvehTk6BET1">4</text>
+        </g>
+        <path d="M 400 125 A 80 60 0 0 0 480 125" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" data-page-node-id="aYIFwxIkqBDGAwiRdkAdaB"/>
+        <text class="sub" x="440" y="215" text-anchor="middle" data-page-node-id="xwUo5C7GrIvPXaJDaJURG4">观众仍看到完整旧值 4</text>
+        <text class="ang" x="505" y="90" data-page-node-id="fHWKyCte2GbpB1OHLbmcfO">rotateX(-24°)</text>
+      </g>
+
+      <text class="lbl" x="730" y="34" text-anchor="middle" data-page-node-id="dvptSf4Cd5MvTD2ekFC736">阶段③ 90°→180° 露出新值</text>
+      <text class="sub" x="730" y="52" text-anchor="middle" data-page-node-id="aAVcdeV7Y2r3EZx0NvFJSV">翻片背面（新值下半）翻上来</text>
+      <g data-page-node-id="XsGbXnKzXyjFONB56cVwYq">
+        <rect class="cardTop" x="690" y="70" width="80" height="55" rx="4" data-page-node-id="c3HBwVJtHgH2F38hUcwsk7"/>
+        <text class="dg" x="730" y="128" data-page-node-id="7cwGRmLMR8u4I3CuzUFbsn">5</text>
+        <rect class="seam" x="690" y="123" width="80" height="4" data-page-node-id="gqIsXdSQPLj6597j2b8ut9"/>
+        <rect class="cardBot" x="690" y="127" width="80" height="55" rx="4" fill="#efece2" stroke="#b4b2a9" data-page-node-id="lmpHFX8TwCQBJJ3s8DLr2f"/>
+        <text class="dg" x="730" y="185" fill="#b4b2a9" data-page-node-id="YHuJ1hEsDjj6kEPcN1c1Zk">4</text>
+        <g transform="rotate(-140 730 125)" data-page-node-id="W9sKCBjkWHc2sIROU6r74o">
+          <rect class="leafB" x="690" y="70" width="80" height="55" rx="4" data-page-node-id="gqpPSSd3IBSCm5ZbdsBlrL"/>
+          <text class="dg" x="730" y="128" fill="#412402" transform="rotate(180 730 100)" data-page-node-id="zKn4vqmB36GHTA6TBmye2X">5</text>
+        </g>
+        <text class="sub" x="730" y="215" text-anchor="middle" data-page-node-id="Wv4E70038QZZvFeGkamScA">上半新5 + 翻片背面新5 → 新值</text>
+        <text class="ang" x="588" y="90" data-page-node-id="F1ABhK8keaI67BFUNfvU65">rotateX(-140°)</text>
+      </g>
+
+      <line x1="270" y1="150" x2="330" y2="150" stroke="#888780" stroke-width="1.5" data-page-node-id="HtdYsuPSAOpFMw7E6aCHLM"/>
+      <line x1="560" y1="150" x2="620" y2="150" stroke="#888780" stroke-width="1.5" data-page-node-id="QmCmCfBwjYkFfyA3zYtZEW"/>
+
+      <rect x="60" y="252" width="760" height="120" rx="10" fill="#eeedfe" stroke="#a9a3dd" stroke-width="0.5" data-page-node-id="F61ns8HfZ7UjpBle1qnuQU"/>
+      <text class="lbl" x="80" y="280" data-page-node-id="nTFyKe5JxjuVq0435xvWOm">CSS 关键三行</text>
+      <text style="font:400 12.5px Consolas,monospace; fill:#3c3489" x="80" y="304" data-page-node-id="3PeJvqK0dXrrOPw3mNry2p">.flip-unit  { perspective: 900px; }          ← 3D 透视舞台（mecha 皮肤用 9em 随字号缩放）</text>
+      <text style="font:400 12.5px Consolas,monospace; fill:#3c3489" x="80" y="326" data-page-node-id="3QVNkc7s3JfWnsblg1757r">.flip-leaf  { transform-origin: bottom center; transform-style: preserve-3d; }</text>
+      <text style="font:400 12.5px Consolas,monospace; fill:#3c3489" x="80" y="348" data-page-node-id="vhyUvCYX5cNyrUkaL2Qb0f">animation: leaf-flip 0.6s cubic-bezier(0.32,0.04,0.36,1) forwards;  @keyframes: rotateX(0→180deg)</text>
+    </svg>
+    <figcaption data-page-node-id="qKvUIz1sYIV5Pgr5anfd26">图 2 · 单叶片 180° 翻转三阶段（接缝 ::after 始终压在翻片之上，z-index:15）</figcaption>
+  </div>
+
+  <h3 data-page-node-id="ZC3U8h137Lyy1kCl2CBCPY">4.3 保证「不穿帮」的细节</h3>
+  <ul data-page-node-id="5D42BTZlhMduTjEah17tXO">
+    <li data-page-node-id="UOu8eBaYuPyfdCFtj8zwYh"><b data-page-node-id="Vi6EVonJ16GP4T2lbDBarV">半卡数字裁切</b>：数字元素高度 = 整卡高（<code data-page-node-id="sZEPq4KawAfOAbViGGoeCv">--card-h</code>），<code data-page-node-id="B2vycAwQOvADBhFonKQsw1">line-height</code> 同高（注释明确说明不能用 %，% 相对字号），top 半卡 <code data-page-node-id="apD87qULmyt8AyzfKaMEEa">overflow:hidden</code> 只露数字上半、bottom 贴底只露下半。翻片两面复用同一裁切方式，位置精确重合。</li>
+    <li data-page-node-id="bGWAESjNCgnkxSgmG41kZC"><b data-page-node-id="GQH7HquZdU42KOFi01bbiT">接缝</b>：独立伪元素 <code data-page-node-id="OuS0FiniDH8z9vPFzCgomL">.flip-unit::after</code> 叠在中线（3px、主题色 <code data-page-node-id="pTiIM2NnnHTLEExKBSBc2r">--seam</code>、z-index:15），置于翻片之上，翻转全程遮住上下半卡与翻片的接缝。</li>
+    <li data-page-node-id="dHGiNCEZpTCCeqF9yV8tMW"><b data-page-node-id="AM3aHRG5k2ZPLPPSIY050m">背面前置隐藏</b>：<code data-page-node-id="Lw2c8DXZbAFlPuCioxCCtN">backface-visibility: hidden</code>，翻片背面在 0-90° 阶段完全不可见，不会提前泄露新值。</li>
+    <li data-page-node-id="8MWX1a02poOqNoActhmj8C"><b data-page-node-id="DleNyw1nPlyFylwuEUwLlR">动画时长 = React 定时器时长</b>：CSS 0.6s 与 <code data-page-node-id="yTXOsDJmHh3yoC0ecUKCaV">setTimeout(600)</code> 严格一致，卸载翻片的瞬间动画恰好播完（<code data-page-node-id="5M323jnlUUmCFe5uYyvg2a">forwards</code> 停在 180°），不会闪帧。</li>
+    <li data-page-node-id="28klH8yULpehKsPFZK6Xyg"><b data-page-node-id="AwFvtZDpP70mYPJQvAiUbQ">字体</b>：Anton（窄高无衬线，翻页钟经典款），备选 Bebas Neue / Oswald。</li>
+  </ul>
+
+  <h3 data-page-node-id="7OfyrDYYZ1yEH0I2APomot">4.4 对比：票根皮肤的里程计式滚动</h3>
+  <p data-page-node-id="6HWh6pPTaBSx89Ayt4ig0U">小窗的票根皮肤故意不用翻页（纸片没有翻页物理感），改用 <code data-page-node-id="f6XHCPNadH9CYC4oiSD2DA">WipeDigit</code>：旧值上滚渐隐 + 新值自下入位渐显，340ms。<b data-page-node-id="rRJeg2EBEK0XW5AHJvJHcy">位移与透明度是两条独立动画</b>（out 层 0.34s 移动 + 0.22s 淡出，in 层 0.34s 移动 + 0.3s 淡入），保证旧值先隐完、新值后显足，无双实重叠。这是「动画要服从材质隐喻」的一个好例子。</p>
+</section>
+
+<!-- ==================== 5 多显示器 ==================== -->
+<section id="s5" data-page-node-id="hq6EKLPSDgi3955jGyXOub">
+  <h2 data-page-node-id="JwzC21O8G1VHd42FOYOatH"><span class="no" data-page-node-id="IiuBwwEGTxArxnuOKaIbre">5</span>多显示器的实现方法</h2>
+
+  <h3 data-page-node-id="mgzUrPHDOZ6yoK57llIBpY">5.1 枚举：物理矩形 + 持久身份，两套 API 各取所长</h3>
+  <ul data-page-node-id="WA55xEY1CsbAenhDwlJYUG">
+    <li data-page-node-id="MeejlwGFOYvYKkPBpVZ8p2"><b data-page-node-id="mzpkg8JFPROpk1ptpE6sgE">物理坐标</b>：<code data-page-node-id="MRpCdaN8vod9wfGE65pdbZ">EnumDisplayMonitors</code> + <code data-page-node-id="9XM8ow4qQVpDZNaUL66lyH">GetMonitorInfoW</code>，拿到每台显示器的物理像素矩形（x/y/w/h）。全屏窗口用 <code data-page-node-id="KMAHy6oJc0lVlcdDLsMNsE">PhysicalPosition/PhysicalSize</code> 定位，<b data-page-node-id="VEfhcDcANwWiDKGcUpQWln">混合 DPI 下也能精准落位</b>（逻辑坐标会被 DPI 缩放搞乱）。</li>
+    <li data-page-node-id="xo0ntg6ZKLyFYXyFBMtBIs"><b data-page-node-id="pTmYVlzCkbFykwYSrsE5Bo">持久身份</b>：HMONITOR 和 <code data-page-node-id="YSFhsaONC4Rdx7Zn2oY5yc">\\.\DISPLAY1</code> 这类名字会随插拔/主屏切换/驱动变化而变，不能跨会话复用。项目用 <code data-page-node-id="vgwOUVHjMR19OAS0IyiEMB">EnumDisplayDevicesW</code> 两级枚举拿到 <code data-page-node-id="nsFRaWyFqB9reMWepyFPE9">MONITOR\厂商码\实例路径</code>（基于 EDID 的硬件身份）作持久 ID。</li>
+  </ul>
+  <div class="card warn" data-page-node-id="09QBymf8GiXsSg4f7l4DO1">
+    <b class="title" data-page-node-id="uPIULFynFuAE1XsfF6n1yI">历史教训（代码注释里原话记录）</b>
+    持久身份最初用 <code data-page-node-id="YLMonNLccul8V20WPAs3EF">QueryDisplayConfig + DisplayConfigGetDeviceInfo</code> 实现，其结构体含 union/LUID，手写 FFI 极易布局错位，实际运行中反复出现<b data-page-node-id="QBFAXRh0LtCFrr79sZcBHm">堆损坏型随机崩溃</b>（同类操作时崩时不崩）。整体移除后改用 <code data-page-node-id="HgWv62CJWN47wcKpU4hz6d">EnumDisplayDevices</code>——DISPLAY_DEVICEW 是纯定长数组，无对齐陷阱。查询失败时退化为 <code data-page-node-id="TnbuEplrKmYyznoDOt4qpS">\\.\DISPLAYn</code> 作 ID（功能可用，仅跨会话识别变弱）。
+  </div>
+
+  <h3 data-page-node-id="7Uwree2zc5TRYo18J8pIBX">5.2 reconcile：幂等收敛状态机（整个多窗管理的核心）</h3>
+  <p data-page-node-id="d0YSEwW8XMgieRaaSAlcX9">目标只有一个：<b data-page-node-id="fEFA8NYIwsRu8xQy8zlP1l">「选中且在线」的每台显示器恰好有一个全屏窗口</b>。启动、设置变更、显示器热插拔三种触发源全部收敛到同一个函数：</p>
+
+  <pre data-page-node-id="hXx07ccq4LOZU5dtN88liq"><code data-page-node-id="banfoMQRROI36XEZyV73op">fn reconcile_inner(app) -&gt; bool {
+  // 1. 小窗形态 → 整体挂起（widget- 前缀天然不被触碰）
+  // 2. 枚举失败 → 不动任何窗口（绝不能据此关窗）
+  // 3. targets = 选中 ∩ 在线；为空回退主屏（再兜底第一块）→ targets 永不为空
+  // 4. 逐台对账：记账存在 && 窗口活着 && 显示器矩形未变 → 原样保留
+  //             否则 → 关旧建新（新 label 只增不复用）
+  // 5. 清理：关闭所有不在新账内的 normal- 窗口（先建后关；新账为空则跳过）
+  // 6. emit("monitors-changed") 通知前端刷新设置面板
+}</code></pre>
+
+  <div class="card note" data-page-node-id="HCiiDqQbs67rV7LHXpnUuk">
+    <b class="title" data-page-node-id="TjsIFV7v12xq61HdcQGmrH">记账快照防自激循环（很精妙）</b>
+    身份识别<b data-page-node-id="YSoAtG2qJb2bT4Gu8viGEx">只认记账</b>（显示器 ID → 窗口 label + 建窗时的显示器矩形快照），绝不依赖窗口自身几何——全屏窗口矩形存在系统性偏差，曾因此每轮误判「漂移」引发关窗/建窗死循环。快照比较的是「显示器矩形 vs 显示器矩形」：只有真实分辨率/位置变化才触发重建，重建后快照更新，数学上不可能自激。另外 reconcile 有 <code data-page-node-id="6bBh7X4UGafkFmG2I7Hgc1">AtomicBool BUSY</code> 防重入 + <code data-page-node-id="m18w3Yv8kXzGTHvmM0lczN">catch_unwind</code> 兜底，单次故障不拖垮进程。
+  </div>
+
+  <h3 data-page-node-id="BqSgke3gjzZ6qjGm1YWGEN">5.3 热插拔监听：为什么是「隐藏顶层窗口」而不是 message-only</h3>
+  <p data-page-node-id="sW9AI8n92cPy31XYnwINa6">独立线程创建一个隐藏窗口接收 <code data-page-node-id="9kRTUcmrEZ4CqgsqtNhoJE">WM_DISPLAYCHANGE</code> 广播。代码注释专门记录：<b data-page-node-id="poWhEyrJFRP7nQMynmnBHB">不能用 message-only 窗口（HWND_MESSAGE），它不接收系统广播消息</b>。收到消息后不立即处理——睡眠唤醒/拔插瞬间拓扑会连续抖动，用 <code data-page-node-id="PjfZMk59aeUQsQUEJA96BJ">SetTimer</code> 做 300ms 防抖，等稳定后再经 <code data-page-node-id="0ZNv37CgTzOImAFGZ4eaXS">async_runtime::spawn</code> 派发 reconcile（遵守铁律一）。</p>
+
+  <h3 data-page-node-id="0mRoR42wUKBSTf40nmwlEb">5.4 两种多窗策略的差异</h3>
+  <table data-page-node-id="x19h0svFdKxfKu68tCA98J">
+    <tr data-page-node-id="EkGP1oKlmH8KJR6dJBn8q2"><th data-page-node-id="ihXm9NqquXdDJoVdMjMwAG"></th><th data-page-node-id="RuHTua23s3cRIfVC3XRtSs">normal 模式</th><th data-page-node-id="GUA9ctTQuunitGuDAPDXUi">saver 屏保模式</th></tr>
+    <tr data-page-node-id="AJozuLJKCF2MixrECQXQrV"><td data-page-node-id="V22CzErfHQEy72QaqkOsVw">窗口数量</td><td data-page-node-id="WBMrFEbqGH0bAAlVMra7bw">用户「选中且在线」的显示器（可配置，含离线项保留——重连自动恢复，docking 体验）</td><td data-page-node-id="IcaAd8RJLzx2opxYbEHt50"><b data-page-node-id="nKHgsq0tTexDpAHGdQX9m5">所有</b>显示器（不遵循显示位置设置）</td></tr>
+    <tr data-page-node-id="YehzNDO2EoSwCnoarjSvBs"><td data-page-node-id="dnrf1pNP7TqHZJodAWyH2m">窗口属性</td><td data-page-node-id="fC9h9cLc63HnPKUjMKDjJf">可 resize、进 fullscreen</td><td data-page-node-id="Ec2jWq0amqdEH1pcTGBto5"><code data-page-node-id="7XGuZwCJywwZ9bwCDHOPgX">always_on_top</code> + 不可 resize（屏保安全）</td></tr>
+    <tr data-page-node-id="JNXtkstHDD8F7tnurHPpjO"><td data-page-node-id="AUfjOEbdspj8sB4VDfvCes">退出方式</td><td data-page-node-id="pGx0mu1EXVLzpmNRD2lu9s">右上角 X → <code data-page-node-id="M1iNmmNSomrPXJwtjeA2M9">exit_app</code> 退出整个进程</td><td data-page-node-id="A5ezjpCERExHGSs4YDGmTx">任意输入（鼠标移动 &gt;3px/点击/按键）→ <code data-page-node-id="xh88xqd7DiVCvlUScu2gWX">exit_saver</code> 退出整个进程</td></tr>
+  </table>
+</section>
+
+<!-- ==================== 6 屏保与 GPU 缓存 ==================== -->
+<section id="s6" data-page-node-id="x1juCH5YIcAuzVz4Dzn9gd">
+  <h2 data-page-node-id="dXSTGpgdjAMQIupBmLTCZt"><span class="no" data-page-node-id="XZKq2lt4QQDPareJjnn9c3">6</span>屏保和主程序共享 GPU 缓存的逻辑</h2>
+
+  <h3 data-page-node-id="CAEt9KiSkBCXMEiGu9QMd1">6.1 注册链路</h3>
+  <div class="arrow-flow" data-page-node-id="uRt0Zg4BpBIRph1wayAeSn">
+    <span class="step" data-page-node-id="gO1RVEkTPoQrX2dZeWAYNk">设置面板开启屏保</span><span class="ar" data-page-node-id="UPA7VykKlGs5l2dqiAtGIV">→</span>
+    <span class="step" data-page-node-id="jtPbYFqDMIarqhn4Hhqni3">fs::copy(app.exe → FlipClock.scr)（exe 同级目录）</span><span class="ar" data-page-node-id="XlUPaR0h3xQ91IdVQjolhW">→</span>
+    <span class="step" data-page-node-id="DlgYbOc5yTGT6EyBBcXZ7x">HKCU\Control Panel\Desktop 写 SCRNSAVE.EXE + ScreenSaveActive=1</span><span class="ar" data-page-node-id="AqyiznN0IbTBbloNVDGDI2">→</span>
+    <span class="step" data-page-node-id="TlXSNSOFcU5OjogAG8nHsZ">等待时间经 SystemParametersInfoW 与系统双向同步</span>
+  </div>
+  <p data-page-node-id="UKDzJlk4Eyaa32fkztoQSd">注册失败有精细的差异化诊断：写 SCRNSAVE.EXE 被拒时，先写一个测试值再删掉——测试值可写说明仅 SCRNSAVE.EXE 被 GPO/杀软保护，不可写说明整个子键无权限，两种情况给完全不同的提示文案。</p>
+
+  <h3 data-page-node-id="yS5H2zxPi0BTKTJzWK7sin">6.2 共享 data directory：一行配置，两个效果</h3>
+  <p data-page-node-id="qpGUiC9SCtVoHv72LQx1tP">所有窗口创建时都指定同一个 WebView2 用户数据目录：</p>
+  <pre data-page-node-id="RDqjwHg2gb5oem1T0i6JZF"><code data-page-node-id="u0FfgVgaPN2v4AF9qpEOCM">fn webview_data_dir() -&gt; PathBuf {
+    %LOCALAPPDATA%\com.flipclock.app\webview-data
+}
+// 每个 WebviewWindowBuilder 都加：
+builder = builder.data_directory(webview_data_dir());</code></pre>
+  <p data-page-node-id="ov9DqgdO7yrG5ZLWhD8nwB">这带来两个后果，一好一坏，项目对两个都做了处理：</p>
+  <table data-page-node-id="sqi1lAyy6NlQoD0kic8vUV">
+    <tr data-page-node-id="OKFp0qhU85XVYOVHAzhCxI"><th data-page-node-id="EFQaohn6hcEUCYJeKkQgzy"></th><th data-page-node-id="DLKwgJLU4u1hoqhWDLhAUj">机制</th><th data-page-node-id="L7FZF2yHAa0jDFk5K5JEXM">结果</th></tr>
+    <tr data-page-node-id="RqoTBBJuMfcWeWAzYwGnUB"><td data-page-node-id="WipDTWQ57PviDH3YCMqb0r">好处</td><td data-page-node-id="2X3ujUpsBznPJmmThpdmWH">app.exe 与 FlipClock.scr 是同一二进制、指向同一数据目录，WebView2 的 <b data-page-node-id="GZAIn1kckBT4YF2J3PagR4">GPU 着色器缓存、代码缓存、字体缓存全部互通</b></td><td data-page-node-id="STwfEHrbP4HOkED2dUjiCp">屏保冷启动速度与帧率和手动开启主程序一致，不会每次触发屏保都经历「冷 WebView 初始化」</td></tr>
+    <tr data-page-node-id="xAFZesOBXyT3lzYux0nyXM"><td data-page-node-id="av8uCnYPIg0FdI3RLFBD0A">坏处</td><td data-page-node-id="gmkawee7Fe7iHDnbGP9NeT">WebView2 的同一用户数据目录<b data-page-node-id="QBC0okum8EoXdfnTcnnZgU">同时只允许一个进程使用</b></td><td data-page-node-id="El7T7XF0068h13rlpUKGeI">若主程序常驻时系统屏保触发 .scr，.scr 的 WebView 初始化失败，残留一个<b data-page-node-id="EU3IY2hCx1LcWUAOzdk2ko">全屏置顶黑窗</b>——无法操作无法退出的「假屏保」</td></tr>
+  </table>
+
+  <h3 data-page-node-id="TALwRDqopM9Fyr9uyr8wTy">6.3 对「坏处」的两道防线</h3>
+  <div class="card tip" data-page-node-id="tfFCN9OTOTK1yFFZwy279h">
+    <b class="title" data-page-node-id="eHQlhRDUGVKvwtEexTehqE">防线一：主程序抑制系统屏保</b>
+    normal 模式 setup 阶段调用一次 <code data-page-node-id="QAcL7WlQlIuOTTcDTiTAaE">SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED)</code>——声明「本线程在持续显示内容」，禁止息屏与系统屏保。主程序本身就是全屏时钟（用户要的正是常显），系统屏保没有存在的必要；进程退出后抑制自动解除，系统屏保恢复正常。这从根上避免了 .scr 与主程序争抢数据目录。
+  </div>
+  <div class="card tip" data-page-node-id="4dV6YUSZHsdHGvfYCxnruZ">
+    <b class="title" data-page-node-id="W0SzzCtRl7DDDEszCu8fLX">防线二：tauri-plugin-single-instance 单实例</b>
+    二次启动（比如手动双击 .scr 或 exe）不再新建进程，而是聚焦已有窗口后新实例退出——同样是为了防多进程争抢共享数据目录。
+  </div>
+
+  <p data-page-node-id="Vqj7EIIJDGpMA33Jfg72eN">整体逻辑闭环：<b data-page-node-id="yloGvjAyKpUshmlu3gaPb1">常驻时主程序自己就是「屏保」（抑制系统屏保）→ 用户离开但主程序没开时，系统屏保触发 .scr → .scr 独占数据目录，还能吃到主程序留下的 GPU 缓存 → 任意输入退出</b>。数据目录是「缓存共享」和「进程互斥」的一体两面，这是 Tauri/WebView2 桌面应用做屏保功能时最值得记住的一条经验。</p>
+</section>
+
+<!-- ==================== 7 小窗 ==================== -->
+<section id="s7" data-page-node-id="3ByZPeoCNxb8dXK2FjI2no">
+  <h2 data-page-node-id="lfC5k2G9218CEmAbIKnhRA"><span class="no" data-page-node-id="2v2S4UOhjc4XcHSKZbXXIa">7</span>小窗形态的实现</h2>
+
+  <h3 data-page-node-id="iEEMvG1JFhgYdZmBpbEzOd">7.1 窗口属性：透明三件套 + 前缀隔离</h3>
+  <pre data-page-node-id="smiAywogZNe4cUQcD9phgm"><code data-page-node-id="Kwbwz51FRZBuo0jvFTPEgg">WebviewWindowBuilder::new(app, "widget-N", WebviewUrl::App("index.html"))
+  .decorations(false)      // 无边框
+  .transparent(true)       // 透明（异形轮廓的前提）
+  .shadow(false)           // 关原生阴影：Windows 原生阴影是矩形，圆角/异形处渗色
+  .always_on_top(true)     // 置顶
+  .skip_taskbar(true)      // 不占任务栏
+  .initialization_script("window.__LAUNCH_MODE__ = 'widget';")</code></pre>
+  <ul data-page-node-id="gCkBvKTDPSZElEqAAtkgWO">
+    <li data-page-node-id="CquKN0w3B9ObbGmYeFsN9r">投影改由前端 CSS <code data-page-node-id="e4wdQA4crUVwnICetbooTw">drop-shadow</code> 绘制，且范围必须小于窗口四边 20px 留白（留白不够会渗出窗口被裁）。</li>
+    <li data-page-node-id="B2l4FkERxjlHMvIyyevFjB"><code data-page-node-id="CH8EC14f8gdcxNrw014erj">widget-</code> 前缀让 Rust 事件钩子只对小窗做 Moved/Resized 落盘与长宽比矫正；reconcile 只认 <code data-page-node-id="4l2f3blp0MNADi0LLn7GJm">normal-</code>，小窗模式下全屏管理天然挂起。</li>
+    <li data-page-node-id="WJSFce5kQK5HjWIpaBSDJK"><b data-page-node-id="eo93hDMBGofj0RWoPQHAvH">防暗闪</b>：index.html 里一段内联脚本在样式表生效前给 <code data-page-node-id="Xo1dyIOmRxHHyqjqdW5DbG">&lt;html&gt;</code> 打 <code data-page-node-id="NZoTdMD3HZKttevHYbBjxg">widget-boot</code> 类强制全程透明——否则样式表底色会在 React 挂载前先绘制，透明窗口闪一块深色矩形。</li>
+  </ul>
+
+  <h3 data-page-node-id="GcajXW92gnBr8hpdKChpEK">7.2 皮肤系统：与全屏主题正交的独立维度</h3>
+  <p data-page-node-id="iI8CugC7QQZv3WmAkncUEB">皮肤决定<b data-page-node-id="IvfX78ChOHt2B4vYiIilht">窗口几何</b>（Rust <code data-page-node-id="SkeQITx54TfQSQL3XFwGE9">SkinGeom</code>：基准尺寸/长宽比/min/max）和<b data-page-node-id="mBD18odwFSBzEAq3359ZAw">票面视觉</b>（前端 CSS），两端的几何常量必须同值（前端 <code data-page-node-id="WPbdzXOMbxpZVV2NKTZaBD">SKIN_BASE/SKIN_LIMITS</code> 镜像）。当前两套：</p>
+  <table data-page-node-id="pwStn8L4URiqTy9VzBiuLB">
+    <tr data-page-node-id="BiEKYOcr4AWsO55UBGjKFH"><th data-page-node-id="B9hjyLtdeQSEMsElOBB1oa">皮肤</th><th data-page-node-id="dkzy20KiQcTGbIQxYHDd9h">基准窗口</th><th data-page-node-id="rwtPSlkhHJ72EKxcwwoxyS">长宽比</th><th data-page-node-id="j9QZmOX0TULyx4zOc3HBQi">数字动画</th><th data-page-node-id="YJhQlnZQu5eHJOVTkXUbVA">视觉要点</th></tr>
+    <tr data-page-node-id="Ui2KAQHCK7UJhhSR2FWK65"><td data-page-node-id="xPeeYRkrRQsqFzKe4nTFVB">票根 ticket</td><td data-page-node-id="KhRwAIACb0n4OAyVqfH23s">340×152</td><td data-page-node-id="q1XQxFouw1a8Zl1V2DvBMq">340:152</td><td data-page-node-id="ODbNqdMKnnHy0ewnbD2WhD">里程计滚动（WipeDigit）</td><td data-page-node-id="S57x1hKFzf69RkjLMNFz9i">米白纸面、微倾 -1.5°、虚线撕裂分隔、半圆撕口 mask 镂空、Code39 风格条形码、红色验讫章</td></tr>
+    <tr data-page-node-id="3fC9gvHh3zb10Q69CGqynX"><td data-page-node-id="aymyChU5FRXvGS82pOfaQg">机械台钟 mecha</td><td data-page-node-id="CSeZx2T9a61AVIIOjmJmzH">304×156</td><td data-page-node-id="sAruxGbTAtCuCb78NS16H6">304:156</td><td data-page-node-id="AwbdJKZ5tARbGm7d7QN943"><b data-page-node-id="vQmk1kD3M8iwJ644BFTeEF">复用 FlipCardGroup 翻页</b>（perspective 9em）</td><td data-page-node-id="TJHGPxzmbBeWlc0RVW0mcg">拉丝金属机身、近黑内凹卡仓、贯穿中缝铰链轴（压在翻片之上）、四角沉头螺丝（一字槽角度各异）、氖管冒号 1Hz 呼吸</td></tr>
+  </table>
+  <p data-page-node-id="eXj2yyHX7Ash1X8mmAfHiB">换肤流程：前端 store（权威方）→ <code data-page-node-id="35EpgNblb8Jzj8YbztBD1W">set_widget_skin</code> 命令 → settings.json 落盘 + Rust 内存缓存更新 → 皮肤真变化时已存在小窗 <code data-page-node-id="IWtQKrq4C43CpUWEvUzsNs">set_size(LogicalSize)</code> 复位新默认尺寸（DPI 安全，位置不动）；未变化则幂等 no-op（前端挂载也会调它做自愈同步，不能重置用户保存的缩放）。</p>
+
+  <h3 data-page-node-id="AreGdtYQNX4yk4xqnAuLzJ">7.3 拖拽：为什么不用原生 startDragging</h3>
+  <p data-page-node-id="7zoF2JDGNCzhnCrHAZvGE6">Windows 原生拖动会把窗口「标题栏」钳制在屏幕顶边之内（<b data-page-node-id="MYpaYHnkWAw2zDVWeJv5DB">无标题栏也受限</b>），且会吞掉本次点击。改为手动实现：</p>
+  <ul data-page-node-id="40G6PPPrcfuJEjLEe4p6RS">
+    <li data-page-node-id="R4lvJBFHt9Eefw1vDVVBhl"><code data-page-node-id="nv6OoGkzuKExxVB6Ia1AD9">setPointerCapture</code> 捕获指针——移出窗口边界后仍持续收到 move 事件（拖到屏幕边缘不断线）。</li>
+    <li data-page-node-id="H7QoXKG16v9t0Jf8AKqv9Z">起点记录 <code data-page-node-id="aRPIZfaiTQ4QMYkdi2NW0m">screenX/Y</code>（DIP）+ 窗口物理位置 + dpr，移动时 <code data-page-node-id="jsA8OrGcmxxzLbdGimQ3FO">setPosition(物理坐标)</code>，任意方向无限制。</li>
+    <li data-page-node-id="m9A2oYD0jh7EGYXClmfYZh"><b data-page-node-id="kzn3ckll9OckF7in4BfNph">4px 位移阈值</b>：阈值内松手仍算点击，双击回全屏 / 右键菜单的语义得以保留。</li>
+    <li data-page-node-id="B0INV4QtYlfGhPs1hsvKWO">每帧从起点绝对值换算，无累积漂移。</li>
+  </ul>
+
+  <h3 data-page-node-id="mrLHW2IWmoQWqtxuqZwmw9">7.4 缩放：中心固定 + 对角线投影（v2 重写的关键算法）</h3>
+  <p data-page-node-id="ZrfBZvowBJ9NktmmttOv1b">原生 <code data-page-node-id="5Q5IAENTE8owOiYCxEQ17T">startResizeDragging</code> 被弃用，原因有二：① NW/SW 方向缩放时 Windows 只锚定右下角，而 Rust 侧 Resized 长宽比矫正的 <code data-page-node-id="WG7VLkJ4JBFEATtvHzJJlQ">set_size</code> 以左上为锚，<b data-page-node-id="iett5QAb4Z7L4Bxhht3SOH">两个锚点互相拉扯</b>→右下角漂移；② 斜向拖拽偏离对角线时原生尺寸与矫正值反复拉锯→闪烁。手动实现：</p>
+  <pre data-page-node-id="0wJiGGNhDFl5wd5A2XHjh3"><code data-page-node-id="tUNVFW5r82tfCogVAWcY8U">// 拖拽位移 (lx, ly) 在"手柄向外对角线 (hx·W, hy·H)"上的投影系数 t：
+const t = (lx * hx * g.w + ly * hy * g.h) / (g.w * g.w + g.h * g.h);
+// 角点位移 t·(W,H)，中心固定 → 宽高各增 2t·(W,H)（两侧对称）
+const newW = clamp(r.ww + 2 * t * g.w * dpr, minW·dpr, maxW·dpr);
+const newH = newW * g.h / g.w;            // 长宽比 JS 侧先行锁定
+setPosition(cx - newW/2, cy - newH/2);    // 中心恒定
+setSize(newW, newH);</code></pre>
+  <p data-page-node-id="nd1c0KsKKjfiAGJOyoNplw">Rust 侧的 <code data-page-node-id="5goUDCFXmy1DWZoO6ClAcn">enforce_aspect</code> 退化为差值 ≤1px 的安全网（矫正自身会再触发 Resized，但那时差值为 0，天然收敛不自激）。三手柄（nw/sw/se）行为统一，皮肤随窗口整体 <code data-page-node-id="3ovxQAmjJgeM8CccfyXb01">transform: scale()</code> 等比缩放，<b data-page-node-id="mio0SyaDvJVbCzz3VWUJu5">布局零改动</b>。</p>
+  <div class="card warn" data-page-node-id="1tuGoWZzIQk3ApLqi9sYBl">
+    <b class="title" data-page-node-id="KnR6mCKrH4d0HLlo6k45AJ">capabilities 权限坑</b>
+    Tauri v2 权限逐项鉴权，<code data-page-node-id="k3G2NtoavM48QoXhltgaPa">setSize</code> 未在 capabilities 里授权时被<b data-page-node-id="sgDeDDpB5tEi2OuicwsWys">静默拒绝</b>（catch 吞错）——现象是窗口只平移不缩放，排查极难。需补 <code data-page-node-id="aPBamF7CIMSUHajaKpwoQT">core:window:allow-set-size</code>。
+  </div>
+
+  <h3 data-page-node-id="jwpC0lIc3N9Cu5NHufzFjS">7.5 弹出菜单：为什么必须是独立窗口</h3>
+  <p data-page-node-id="Q94b0iPZFPXYi0rDocXmac">菜单内容可能比小窗本身还大，且必须能超出小窗边界显示——<b data-page-node-id="O5qCTauWJAvqNEhHacqKDw">单窗口内容无法越界是 OS 硬限制</b>。所以菜单做成独立置顶小窗（<code data-page-node-id="6LW7AM0cr9O3EpiNVtLLE7">wmenu-</code> 前缀）：</p>
+  <ul data-page-node-id="NUZqajzJIR4mBYPrHQKROI">
+    <li data-page-node-id="oVXN9ZHFwCJboQG2vYDxRy">前缀特意不匹配 <code data-page-node-id="zw7gA2BmMS8UJFHRNiHsNN">widget-</code>，避免被当作小窗本体误触发落盘与矫正钩子。</li>
+    <li data-page-node-id="aeboOPSR7ILjlHDld41Ys3">Rust 端 <code data-page-node-id="NyFajb9OhbGUHoADJmNXUI">open_widget_menu</code> 按 dpr 换算菜单物理尺寸，<b data-page-node-id="djy3uFhoiZPHqE3WtN5SDD">钳制在含点显示器内</b>（防止弹出越屏）。</li>
+    <li data-page-node-id="4lsmWOkKtfwPuCQ9A9E3tl">失焦（点击菜单外任意处）/ Esc / 点击四周留白 → 自关；「回到全屏」先落命令再自关（窗口销毁会中断未完成的 invoke）。</li>
+    <li data-page-node-id="tdKohlmmwKN0EmwQ6djXl8">菜单窗<b data-page-node-id="R5U30bA8YU8tSxX1e7TVGa">固定本地字体栈</b>：新 WebView 首帧 webfont 未激活时 <code data-page-node-id="7mzlhZztqHYeL6JLeSIWrE">·</code>/空格宽度随字体重排（FOUT），观感上「皮肤 · xxx」反复闪变——本地字体首帧即最终帧。</li>
+  </ul>
+
+  <h3 data-page-node-id="2OThFYxRRC5BgEEIQI1z8e">7.6 持久化：物理坐标 + 校验 + 兜底</h3>
+  <ul data-page-node-id="cTk3fobwA94UiWHzpqJLv5">
+    <li data-page-node-id="h7PA08n7mu15H4itcmeaXM">位置/尺寸存 Rust 侧 settings.json（物理像素，与显示器坐标系同体系，混合 DPI 无歧义）。</li>
+    <li data-page-node-id="BTsO1XWIOXbMAcSQ9GnQ0L"><b data-page-node-id="vsDaIQf0tnOSyZzRKAWjUm">Moved/Resized 事件 500ms 节流落盘</b>（共用一个节流阀），退出时 <code data-page-node-id="RzQaCsw3uwDIEaDafxxQel">save_now</code> 兜底（节流可能漏掉拖拽终点）。</li>
+    <li data-page-node-id="bhzqPw3CYv5QE8OSB82xgW">启动时<b data-page-node-id="HN0EjpdaInSeB4R3hPtT8i">校验可见性</b>：窗口左上角 +24px 必须落在某台显示器内，否则视为不可见，回退主屏右下角（留出任务栏高度）。</li>
+    <li data-page-node-id="u37w1y97TwUnD0IeZpWp9g">形态切换（全屏↔小窗）遵守「先建后关」：小窗建不出来保留全屏窗，全屏 reconcile 不出窗口保留小窗，避免零窗口即进程退出。</li>
+  </ul>
+</section>
+
+<!-- ==================== 8 决策清单 ==================== -->
+<section id="s8" data-page-node-id="WQOwzFFprHsd7u7isDssUd">
+  <h2 data-page-node-id="seeXoUrGKS7VnGvxru5ZOR"><span class="no" data-page-node-id="Js8EA6VWGobiHiGKbMv89Q">8</span>值得收藏的工程决策清单</h2>
+  <table data-page-node-id="d6U7uEoqbYfzBzhfZQu5rA">
+    <tr data-page-node-id="wn7kCzRc39AD2xbc7JSVtB"><th style="width:44%" data-page-node-id="cUkNgtKL3Opj7IICgXvuIo">问题</th><th data-page-node-id="3BY6GAFbCHXEyJ1whj6Bl7">项目采用的解法</th></tr>
+    <tr data-page-node-id="lv0IDzQkBo5GfBYrifsy9O"><td data-page-node-id="P91JPsXcKF2Lzt9SOJAzlV">主线程同步 build() 与 WebView2 互等死锁（wry#583）</td><td data-page-node-id="eraDDhfCJXyfsBFy3Zo6mL">一切建窗/改窗命令 async + <code data-page-node-id="mowAB59EgLQ1zN6RVQIzMs">async_runtime::spawn</code>；仅启动 setup 路径可同步</td></tr>
+    <tr data-page-node-id="fJvAvtfNwzpOlgIl9yf6rK"><td data-page-node-id="7GuzCP2pi8aAqOmvdZ7b64">对已存在全屏窗做状态切换 → 整进程卡死</td><td data-page-node-id="ExFCl4o0FgeWoQLeOXh31s">几何变化一律关旧建新，由记账快照判定，数学上防自激循环</td></tr>
+    <tr data-page-node-id="GAeMnlRKHKcG55GEWlJyYZ"><td data-page-node-id="PmUQ5tusFWlFzRztkwwDxD">末窗关闭 = 进程退出</td><td data-page-node-id="WUeSoEiqIWJeOxZHXRKFjI">形态切换/收敛清理全部「先建后关」，建失败保留旧窗</td></tr>
+    <tr data-page-node-id="4PhV1XTcmPB3LYovAa3xsY"><td data-page-node-id="w1b2rXrXlCdX30XsykzegG">QueryDisplayConfig 手写 FFI 堆损坏随机崩溃</td><td data-page-node-id="Hfa63cqAP4cflqLCLl2g0R">改 EnumDisplayDevices（纯定长数组结构，无 union/对齐陷阱）</td></tr>
+    <tr data-page-node-id="awKx44EeLJUD3AUFF1LIVr"><td data-page-node-id="4cIBopQoueAkO11iiDbF7o">全屏窗口矩形有系统性偏差 → 误判漂移 → 关建死循环</td><td data-page-node-id="NC7VYXNQ1w6b1qoUGLNmBL">身份识别只认记账（ID→label+显示器矩形快照），绝不读窗口几何</td></tr>
+    <tr data-page-node-id="tpOcjaufBXjkKyOmHJCNix"><td data-page-node-id="HIaAENXXUEUo3AUA7Kabl1">message-only 窗口收不到系统广播</td><td data-page-node-id="jemBzf17mVYwFvQOtUSHMv">用隐藏顶层窗口接收 WM_DISPLAYCHANGE，SetTimer 300ms 防抖</td></tr>
+    <tr data-page-node-id="Lddy0NfnPkQQlXu7gGaOgh"><td data-page-node-id="LuYxdBO6oNSlVq6MHpBxqF">共享 WebView2 数据目录同时只允许一个进程</td><td data-page-node-id="sXOVwbMoZb0GoH7eFOkaP9">单实例插件 + 主程序 SetThreadExecutionState 抑制系统屏保，杜绝「假屏保」黑窗</td></tr>
+    <tr data-page-node-id="d1XTG4V03KRiDYQR4FS7hL"><td data-page-node-id="0rVv4XXADUiEM0T5ys4HlM">原生窗口阴影在异形/圆角处渗色</td><td data-page-node-id="ceACLPndl5LwzWWviLZGFY">shadow(false)，投影由 CSS drop-shadow 绘制且小于窗口留白</td></tr>
+    <tr data-page-node-id="YhaQ1lMiKkS3WpvmlC6CCK"><td data-page-node-id="CWtumM8cfe0nKRVf2SRcKU">原生 startDragging 顶部钳制 + 吞点击</td><td data-page-node-id="8nIJ7zU9o89anaSmOMdJ1q">pointer 捕获 + setPosition 手动拖拽，4px 阈值保点击语义</td></tr>
+    <tr data-page-node-id="Yjg1YtEFsr0cenSZrxN1tb"><td data-page-node-id="GtLQtkGlmpVtKwJ7cRGAOG">原生缩放锚点与长宽比矫正锚点互相拉扯</td><td data-page-node-id="EpHouu9L5aLHNKj8LE5AkS">中心固定 JS 缩放（对角线投影），Rust 矫正退化为 ≤1px 安全网</td></tr>
+    <tr data-page-node-id="894uuYWH11IN5LwpWziZV6"><td data-page-node-id="Anl1M0FfZr8uRKrKvA1byU">单窗口内容无法越界（OS 硬限制）</td><td data-page-node-id="pGCtpEXJPVjvAyjk1uHGm6">菜单做独立置顶小窗，wmenu- 前缀避开 widget- 钩子</td></tr>
+    <tr data-page-node-id="5t3gCDe1ovstgSZy5XAmPy"><td data-page-node-id="Rl7Wx7v1BLnqzJw68DWI5A">新 WebView 首帧 webfont 未激活（FOUT）</td><td data-page-node-id="KgBc4NpcHMAg5x4pce62ng">菜单窗固定本地字体栈，首帧即最终帧</td></tr>
+    <tr data-page-node-id="7rDBixkijAIFFxbnrmFCvj"><td data-page-node-id="mem4PTShQQCm2U0ElEidY8">透明窗口被样式表底色暗闪</td><td data-page-node-id="P1QUKTx6PNZZqXLHrOqhiC">index.html 内联脚本在样式生效前打 widget-boot 类强制透明</td></tr>
+    <tr data-page-node-id="hsdxv6zs72Eh9ciJcjbOJw"><td data-page-node-id="BgIga02TBgKDJM5Lekwff0">setSize 未授权被静默拒绝</td><td data-page-node-id="X7F73OIIdFWH3IQlRbRRHs">capabilities 显式补 <code data-page-node-id="x8TSf2OeZWKwGOSC0WJ5St">core:window:allow-set-size</code></td></tr>
+    <tr data-page-node-id="aVe3FGXpTbbDmruQvmz3ko"><td data-page-node-id="fEVuNBsn7PvBFTsSjfX53F">发布版闪退无痕迹</td><td data-page-node-id="FLYLysCJkPyCfmsOZ4AnDh">panic hook + SetUnhandledExceptionFilter + MAIN 线程标记日志三件套</td></tr>
+    <tr data-page-node-id="dk0evzVytMliTGKrnEpzR1"><td data-page-node-id="Ge44yxLKeptjoEWkG9ZlrM">建窗前读不到 localStorage</td><td data-page-node-id="cYfwvfHngE9iGU7VW87bwm">窗口几何类设置存 Rust 侧 settings.json，UI 偏好存 localStorage，双通道各司其职</td></tr>
+  </table>
+
+  <div class="card tip" data-page-node-id="N1S0rxwPUCJVVrSF06WFHK">
+    <b class="title" data-page-node-id="dbj2Z44lEMjZlTm4Si5iVm">总评</b>
+    这是一个「踩坑记录密度」极高的项目——几乎每个非常规实现（手动拖拽、中心缩放、独立菜单窗、枚举降级）背后都对应一条被血泪验证过的原生 API 缺陷，而且全部以代码注释 + roadmap 的形式留痕。对想做 Tauri 多窗口/屏保/桌面小部件的开发者来说，这个代码库本身就是一份高质量的 Windows 桌面集成避坑手册。
+  </div>
+</section>
+
+<footer data-page-node-id="L0xEOBujDLLaJ3GahASw07">
+  Flip Clock 项目架构研究报告 · 基于对 src/（前端）与 src-tauri/src/lib.rs（后端）的完整源码阅读 · 2026-09-13
+</footer>
+
+</div>
+</body>
+</html>
