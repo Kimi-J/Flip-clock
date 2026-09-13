@@ -1275,6 +1275,11 @@ input[type="range"]::-webkit-slider-thumb {
   border-color: transparent;
 }
 
+/* 汉堡设置钮:复用 .widget-x 全套样式(含 mecha 配色选择器),只改水平位置 */
+.widget-menu-btn {
+  right: 25px;
+}
+
 /* 四角缩放手柄:纸色小方片 + 油墨描边(深浅壁纸都可见),悬停显露 */
 .widget-rh {
   position: absolute;
@@ -1334,6 +1339,30 @@ input[type="range"]::-webkit-slider-thumb {
   display: inline-block;
   width: 14px;
   color: #c9a86a;
+}
+
+/* ==================== 弹出菜单独立小窗(wmenu-) ==================== */
+/* 菜单窗边界 = 菜单矩形本身(无阴影留白、无阴影、无动画):菜单撑满窗口 */
+
+.wmenu-root {
+  cursor: default;
+  /* 纯本地字体栈:全局 Oswald/Noto Sans SC 是远程 webfont,新 WebView 首帧
+     用回退字体渲染、字体激活后重排——"·"与空格宽度随字体变化,观感为
+     "皮肤 · xxx"闪变成"皮肤·xxx"。菜单为纯中文 UI,固定本地字体,
+     首帧即最终帧,无闪变。 */
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.wmenu-pop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  /* 覆盖 .widget-menu 的窗内滚动兜底:菜单窗尺寸即内容尺寸,无需钳制 */
+  max-height: none;
+  overflow: visible;
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 /* ==================== 桌面小部件 · 机械台钟皮肤(Split-Flap) ==================== */

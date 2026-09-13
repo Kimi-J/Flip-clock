@@ -1240,6 +1240,63 @@ mod widget_window {
     }
 }
 
+// ==================== 小窗弹出菜单窗口 ====================
+// 菜单内容可以比小窗本身还大,且必须能超出小窗边界显示——
+// 单窗口内容无法越界(OS 硬限制),故菜单做成独立置顶小窗。
+// 标签前缀 wmenu- 特意不匹配 widget-:避免被当作小窗本体,
+// 误触发 Moved/Resized 的位置尺寸落盘与长宽比矫正。
+mod widget_menu_window {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use tauri::{AppHandle, Manager};
+
+    pub const PREFIX: &str = "wmenu-";
+    /// 菜单窗逻辑尺寸:与菜单内容矩形一致(无阴影留白,CSS 内撑满)
+    pub const W: f64 = 136.0;
+    pub const H: f64 = 160.0;
+
+    static SEQ: AtomicU32 = AtomicU32::new(0);
+
+    pub fn close_all(app: &AppHandle) {
+        for w in app.webview_windows().into_values() {
+            if w.label().starts_with(PREFIX) {
+                let _ = w.close();
+            }
+        }
+    }
+
+    /// 创建菜单窗:隐藏建 → 物理坐标定位 → show(同小窗建窗序列)。
+    /// 失焦由前端 onFocusChanged 自关;回全屏/退出由前端先自关再触发。
+    pub fn create(app: &AppHandle, x: i32, y: i32) {
+        let label = format!("{}{}", PREFIX, SEQ.fetch_add(1, Ordering::Relaxed) + 1);
+        let mut builder = tauri::WebviewWindowBuilder::new(
+            app,
+            label,
+            tauri::WebviewUrl::App("index.html".into()),
+        )
+        .title("Flip Clock · 菜单")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .focused(true)
+        .visible(false)
+        .inner_size(W, H)
+        .initialization_script("window.__LAUNCH_MODE__ = 'widget-menu';");
+        #[cfg(windows)]
+        {
+            builder = builder.data_directory(crate::webview_data_dir());
+        }
+        let Ok(window) = builder.build() else {
+            crate::app_log("wmenu: build failed");
+            return;
+        };
+        let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+        let _ = window.show();
+    }
+}
+
 // ==================== 显示器拓扑变化监听 ====================
 // 独立线程创建隐藏顶层窗口接收 WM_DISPLAYCHANGE 广播。
 // 注意不能用 message-only 窗口(HWND_MESSAGE):它不接收系统广播消息。
@@ -1522,6 +1579,29 @@ async fn set_widget_skin(app: tauri::AppHandle, skin: String) -> Result<(), Stri
     Ok(())
 }
 
+/// 打开小窗弹出菜单:x/y 为菜单窗左上角(物理坐标,由前端从锚点换算),
+/// dpr 用于把菜单逻辑尺寸换算为物理尺寸做屏幕内钳制(防止弹出越屏)。
+/// async 命令(建窗规则同 set_widget_skin:主线程同步建窗与 WebView2 死锁)
+#[tauri::command]
+async fn open_widget_menu(app: tauri::AppHandle, x: i32, y: i32, dpr: f64) -> Result<(), String> {
+    let mw = (widget_menu_window::W * dpr).round() as i32;
+    let mh = (widget_menu_window::H * dpr).round() as i32;
+    // 含点显示器内钳制(找不到所在显示器则原样弹出)
+    let (mut x, mut y) = (x, y);
+    if let Some(mons) = monitors::enumerate() {
+        if let Some(m) = mons
+            .iter()
+            .find(|m| x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height)
+        {
+            x = x.clamp(m.x, (m.x + m.width - mw).max(m.x));
+            y = y.clamp(m.y, (m.y + m.height - mh).max(m.y));
+        }
+    }
+    widget_menu_window::close_all(&app);
+    widget_menu_window::create(&app, x, y);
+    Ok(())
+}
+
 /// 屏保模式:所有显示器各建一个独立窗口铺满(不遵循"显示位置",保持既有行为)
 fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
     #[cfg(windows)]
@@ -1722,6 +1802,7 @@ pub fn run() {
             get_window_mode,
             set_window_mode,
             set_widget_skin,
+            open_widget_menu,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

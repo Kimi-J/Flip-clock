@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import ConfigPage from "@/pages/ConfigPage";
 import Home from "@/pages/Home";
+import WidgetMenuPage from "@/pages/WidgetMenuPage";
 import WidgetPage from "@/pages/WidgetPage";
 import { useClockStore, type ClockSettings } from "@/store/clockStore";
 
@@ -14,14 +15,16 @@ import { useClockStore, type ClockSettings } from "@/store/clockStore";
  * - saver: 屏保运行态(纯展示,任意输入退出)
  * - config: 配置页(/c 模式)
  * - preview: 预览态(控制面板小窗,纯展示)
- * - widget: 桌面小部件(置顶票根小窗,拖拽移动)
+ * - widget: 桌面小部件(置顶小窗,拖拽移动)
+ * - widget-menu: 小部件的弹出设置菜单(独立置顶小窗,失焦自关)
  */
-function getMode(): "normal" | "saver" | "config" | "preview" | "widget" {
-  // Tauri 注入(屏保/小部件):Rust 端通过 initialization_script 注入
+function getMode(): "normal" | "saver" | "config" | "preview" | "widget" | "widget-menu" {
+  // Tauri 注入(屏保/小部件/菜单窗):Rust 端通过 initialization_script 注入
   if (typeof window !== "undefined") {
     const injected = (window as unknown as Record<string, unknown>).__LAUNCH_MODE__;
     if (injected === "saver") return "saver";
     if (injected === "widget") return "widget";
+    if (injected === "widget-menu") return "widget-menu";
   }
   // 浏览器/开发模式:URL query
   const params = new URLSearchParams(window.location.search);
@@ -59,6 +62,10 @@ export default function App() {
 
   if (mode === "widget") {
     return <WidgetPage />;
+  }
+
+  if (mode === "widget-menu") {
+    return <WidgetMenuPage />;
   }
 
   // saver 和 preview 隐藏交互控件;normal 保留完整 UI(开发用)

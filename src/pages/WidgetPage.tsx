@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import FlipCardGroup from "@/components/FlipCardGroup";
 import { useClockTime, type ClockTime } from "@/hooks/useClockTime";
-import { useClockStore, WIDGET_SKIN_OPTIONS, type WidgetSkinName } from "@/store/clockStore";
+import { useClockStore, type WidgetSkinName } from "@/store/clockStore";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
@@ -41,22 +41,8 @@ const RESIZE_HANDLES = [
  * - 显示秒为小窗独立设置(widgetShowSeconds),右键菜单与全屏设置面板互通
  */
 export default function WidgetPage() {
-  const { is24Hour, widgetShowSeconds, widgetSkin, toggleWidgetSeconds, setWidgetSkin } = useClockStore();
+  const { is24Hour, widgetShowSeconds, widgetSkin } = useClockStore();
   const time = useClockTime(is24Hour);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // 右键菜单按实际渲染尺寸钳制到窗口内(useLayoutEffect 绘制前修正,无闪跳)。
-  // 小窗可缩到比菜单还小,位置钳制不够,配合 CSS max-height+滚动兜底。
-  useLayoutEffect(() => {
-    const el = menuRef.current;
-    if (!menu || !el) return;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    const nx = Math.max(4, Math.min(menu.x, window.innerWidth - w - 4));
-    const ny = Math.max(4, Math.min(menu.y, window.innerHeight - h - 4));
-    if (nx !== menu.x || ny !== menu.y) setMenu({ x: nx, y: ny });
-  }, [menu]);
 
   const base = SKIN_BASE[widgetSkin];
 
@@ -90,7 +76,6 @@ export default function WidgetPage() {
   }, []);
 
   const backToFullscreen = () => {
-    setMenu(null);
     if (isTauri) invoke("set_window_mode", { mode: "fullscreen" }).catch(() => {});
   };
 
@@ -98,9 +83,28 @@ export default function WidgetPage() {
     if (isTauri) invoke("exit_app").catch(() => {});
   };
 
-  const selectSkin = (skin: WidgetSkinName) => {
-    setMenu(null);
-    setWidgetSkin(skin); // Rust 侧同步由上方 effect 完成
+  // 设置菜单为独立置顶小窗(Rust open_widget_menu):内容可超出本窗边界,
+  // 小窗缩到多小都能完整显示;失焦自动关闭。
+  // clientX/Y 为本窗内逻辑坐标,换算成菜单窗左上角的屏幕物理坐标。
+  const openMenuAt = (clientX: number, clientY: number) => {
+    if (!isTauri) return;
+    const dpr = window.devicePixelRatio || 1;
+    getCurrentWindow()
+      .outerPosition()
+      .then((pos) => {
+        invoke("open_widget_menu", {
+          x: Math.round(pos.x + clientX * dpr),
+          y: Math.round(pos.y + clientY * dpr),
+          dpr,
+        }).catch(() => {});
+      })
+      .catch(() => {});
+  };
+
+  // 汉堡按钮:菜单窗(136 逻辑宽)右对齐按钮、弹出在按钮下方
+  const openSettingsMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    openMenuAt(r.right - 136, r.bottom + 6);
   };
 
   // 手动拖拽:不用原生 startDragging——Windows 原生移动会把窗口"标题栏"
@@ -220,11 +224,9 @@ export default function WidgetPage() {
     <div
       className="widget-root"
       data-skin={widgetSkin}
-      onClick={() => menu && setMenu(null)}
       onContextMenu={(e) => {
         e.preventDefault();
-        // 先按点击点放置,布局副作用里按实际尺寸钳制进窗口
-        setMenu({ x: e.clientX, y: e.clientY });
+        openMenuAt(e.clientX, e.clientY);
       }}
     >
       {/* 拖拽面:任意位置可拖(手动阈值拖拽);按钮/手柄置于区外,避免吞点击 */}
@@ -243,7 +245,15 @@ export default function WidgetPage() {
         )}
       </div>
 
-      {/* 悬停显露:关闭钮(退出进程,与全屏 X 语义一致)+ 三角缩放手柄 */}
+      {/* 悬停显露:设置钮(汉堡,弹独立菜单窗)+ 关闭钮(退出进程,与全屏 X 语义一致)+ 三角缩放手柄 */}
+      <button
+        className="widget-x widget-menu-btn"
+        aria-label="小部件设置"
+        aria-haspopup="menu"
+        onClick={openSettingsMenu}
+      >
+        <Menu size={12} />
+      </button>
       <button className="widget-x" aria-label="关闭" onClick={exitApp}>
         <X size={12} />
       </button>
@@ -259,24 +269,6 @@ export default function WidgetPage() {
           onPointerCancel={endResize}
         />
       ))}
-
-      {/* 右键迷你菜单 */}
-      {menu && (
-        <div ref={menuRef} className="widget-menu" style={{ left: menu.x, top: menu.y }}>
-          <button onClick={toggleWidgetSeconds}>
-            <span className="widget-menu__tick">{widgetShowSeconds ? "✓" : ""}</span>
-            显示秒
-          </button>
-          {WIDGET_SKIN_OPTIONS.map((opt) => (
-            <button key={opt.value} onClick={() => selectSkin(opt.value)}>
-              <span className="widget-menu__tick">{widgetSkin === opt.value ? "✓" : ""}</span>
-              皮肤 · {opt.label}
-            </button>
-          ))}
-          <button onClick={backToFullscreen}>回到全屏</button>
-          <button onClick={exitApp}>退出</button>
-        </div>
-      )}
     </div>
   );
 }
