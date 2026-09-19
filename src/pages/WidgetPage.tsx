@@ -5,6 +5,7 @@ import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { Menu, X } from "lucide-react";
 import FlipCardGroup from "@/components/FlipCardGroup";
 import { useClockTime, type ClockTime } from "@/hooks/useClockTime";
+import FallingSkin from "@/pages/widget/FallingSkin";
 import { useClockStore, type WidgetSkinName } from "@/store/clockStore";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -15,12 +16,14 @@ const WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四
 const SKIN_BASE: Record<WidgetSkinName, { w: number; h: number }> = {
   ticket: { w: 340, h: 152 },
   mecha: { w: 304, h: 156 },
+  falling: { w: 320, h: 180 },
 };
 
 /** 各皮肤缩放边界(逻辑像素,与 Rust SkinGeom 同值):中心缩放的宽度钳制范围 */
 const SKIN_LIMITS: Record<WidgetSkinName, { minW: number; maxW: number }> = {
   ticket: { minW: 260, maxW: 680 },
   mecha: { minW: 240, maxW: 608 },
+  falling: { minW: 256, maxW: 640 },
 };
 
 /**
@@ -240,6 +243,8 @@ export default function WidgetPage() {
       >
         {widgetSkin === "mecha" ? (
           <MechaSkin scale={scale} time={time} showSeconds={widgetShowSeconds} />
+        ) : widgetSkin === "falling" ? (
+          <FallingSkin scale={scale} is24Hour={is24Hour} showSeconds={widgetShowSeconds} />
         ) : (
           <TicketSkin scale={scale} time={time} is24Hour={is24Hour} showSeconds={widgetShowSeconds} />
         )}

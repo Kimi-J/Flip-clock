@@ -1074,24 +1074,32 @@ mod widget_window {
     }
 
     pub fn geom() -> SkinGeom {
-        if skin() == "mecha" {
-            SkinGeom {
+        match skin().as_str() {
+            "mecha" => SkinGeom {
                 w: 304.0,
                 h: 156.0,
                 min_w: 240.0,
                 min_h: 124.0,
                 max_w: 608.0,
                 max_h: 312.0,
-            }
-        } else {
-            SkinGeom {
+            },
+            // 叶落成时:场景 320×180(内容 280×140,四边 20px 留白供投影/叶片飞出)
+            "falling" => SkinGeom {
+                w: 320.0,
+                h: 180.0,
+                min_w: 256.0,
+                min_h: 144.0,
+                max_w: 640.0,
+                max_h: 360.0,
+            },
+            _ => SkinGeom {
                 w: 340.0,
                 h: 152.0,
                 min_w: 260.0,
                 min_h: 116.0,
                 max_w: 680.0,
                 max_h: 304.0,
-            }
+            },
         }
     }
 
@@ -1250,9 +1258,10 @@ mod widget_menu_window {
     use tauri::{AppHandle, Manager};
 
     pub const PREFIX: &str = "wmenu-";
-    /// 菜单窗逻辑尺寸:与菜单内容矩形一致(无阴影留白,CSS 内撑满)
+    /// 菜单窗逻辑尺寸:与菜单内容矩形一致(无阴影留白,CSS 内撑满)。
+    /// 高度按菜单项数定:6 项(显示秒 + 3 皮肤 + 回全屏 + 退出)× ~30px + 8px 边距
     pub const W: f64 = 136.0;
-    pub const H: f64 = 160.0;
+    pub const H: f64 = 188.0;
 
     static SEQ: AtomicU32 = AtomicU32::new(0);
 
@@ -1558,7 +1567,7 @@ async fn set_window_mode(app: tauri::AppHandle, mode: String) -> Result<(), Stri
 /// 调用它做自愈同步,不能因此重置用户保存的缩放。
 #[tauri::command]
 async fn set_widget_skin(app: tauri::AppHandle, skin: String) -> Result<(), String> {
-    if skin != "ticket" && skin != "mecha" {
+    if skin != "ticket" && skin != "mecha" && skin != "falling" {
         return Err("未知小窗皮肤".to_string());
     }
     let changed = skin != widget_window::skin();

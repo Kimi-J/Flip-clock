@@ -4,7 +4,7 @@ import { emit } from "@tauri-apps/api/event";
 export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink" | "clay";
 export type BackgroundMode = "minimal" | "aurora" | "starry";
 /** 小窗皮肤:与全屏主题正交的独立维度,皮肤自带完整配色与窗口几何 */
-export type WidgetSkinName = "ticket" | "mecha";
+export type WidgetSkinName = "ticket" | "mecha" | "falling";
 
 export interface ClockSettings {
   theme: ThemeName;
@@ -62,16 +62,27 @@ const STORAGE_KEY = "flip-clock-settings-v1";
 function loadSettings(): Partial<ClockSettings> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
+    if (!raw) return applyUrlOverrides({});
     const parsed = JSON.parse(raw) as Partial<ClockSettings> & { backgroundMode?: string };
     // 旧值迁移:particles→starry, solid→minimal(aurora 保持)
     const bg = parsed.backgroundMode as string | undefined;
     if (bg === "particles") parsed.backgroundMode = "starry";
     else if (bg === "solid") parsed.backgroundMode = "minimal";
-    return parsed;
+    return applyUrlOverrides(parsed);
   } catch {
-    return {};
+    return applyUrlOverrides({});
   }
+}
+
+/** 调试覆写(仅开发/截图用):?skin=ticket|mecha|falling 强制皮肤,不落盘 */
+function applyUrlOverrides(s: Partial<ClockSettings>): Partial<ClockSettings> {
+  try {
+    const skin = new URLSearchParams(window.location.search).get("skin");
+    if (skin === "ticket" || skin === "mecha" || skin === "falling") s.widgetSkin = skin;
+  } catch {
+    /* 非浏览器环境忽略 */
+  }
+  return s;
 }
 
 const saved = loadSettings();
@@ -176,4 +187,5 @@ export const BACKGROUND_OPTIONS: { value: BackgroundMode; label: string }[] = [
 export const WIDGET_SKIN_OPTIONS: { value: WidgetSkinName; label: string }[] = [
   { value: "ticket", label: "票根" },
   { value: "mecha", label: "机械台钟" },
+  { value: "falling", label: "叶落成时" },
 ];

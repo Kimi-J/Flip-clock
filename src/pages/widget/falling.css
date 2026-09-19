@@ -1,0 +1,194 @@
+/* ==================== 叶落成时(Falling Time)皮肤 ====================
+ * 独立样式文件(设计文档 §1:不并入 index.css,直接静态 import)。
+ * 皮肤自带完整配色,不跟随全屏主题;所有内部坐标按基准分辨率 320×180 写死,
+ * 壳层 .falling-wrap 被 transform: scale(s) 等比缩放,内部不感知。
+ *
+ * z-index 分层(设计文档 §2):
+ *   z1 场景层(.falling-bg + 装饰叶 + 叶堆)  → z2 数字层 → z3 叶影层
+ *   → z4 前景落叶(hero/gust) → z5 玻璃层
+ */
+
+/* 投影画在包装上(范围 < 窗口四边 20px 留白,同壳层规范);
+ * transform(缩放)由 WidgetPage 内联给出 */
+.falling-wrap {
+  width: 320px;
+  height: 180px;
+  transform-origin: center center;
+  filter: drop-shadow(0 3px 6px rgba(60, 45, 20, 0.35));
+}
+
+.falling-scene {
+  position: relative;
+  width: 320px;
+  height: 180px;
+  /* 场景内一切元素不拦截事件:拖拽/右键/双击由壳层 .widget-drag 统一处理 */
+  pointer-events: none;
+}
+
+/* ---- z1 场景层 ---- */
+.falling-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: visible; /* 叶片可越出面板边缘(20px 留白即飞出余量) */
+}
+
+.ginkgo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.ginkgo__veins {
+  fill: none;
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+
+/* 枝头装饰叶:transform 由 rAF 逐帧写入(多相位摆动,§5) */
+.falling-decor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  transform-origin: 50% 90%; /* 绕叶柄摆 */
+}
+
+/* 玻璃上的叶影:装饰叶的模糊副本,opacity ≤ 0.06,随摆动位移 ×0.3(§5) */
+.falling-decor-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 26;
+  filter: blur(3px);
+  opacity: 0.05;
+}
+
+/* ---- z2 数字层(DOM 文本;静态部分极度克制,动画已经很满,§9) ---- */
+.falling-digits {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 280px;
+  height: 140px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.falling-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(122, 92, 54, 0.6); /* 枯褐 60% 透明 */
+  margin-bottom: 4px;
+}
+
+.falling-time {
+  display: flex;
+  align-items: baseline;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 76px; /* 约占场景高 55–60% */
+  line-height: 1;
+  color: #3a2f28; /* 墨褐,非纯黑 */
+}
+
+/* 等宽数字槽:Georgia 数字是比例宽度("1"明显窄),换数会让整串重排位偏移。
+ * 槽宽 = 0-9 实测最大字宽(组件挂载时 Canvas 测量写入 --digit-w),
+ * 从此任何跳变相邻数字都纹丝不动 */
+.falling-time > span:not(.falling-colon) {
+  display: inline-block;
+  width: var(--digit-w, 0.58em);
+  text-align: center;
+}
+
+.falling-colon {
+  margin: 0 0.04em;
+  transform: translateY(-0.06em);
+  color: rgba(58, 47, 40, 0.75);
+}
+
+.falling-date {
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(58, 47, 40, 0.55); /* 同色系更浅 */
+}
+
+/* ---- z3 叶影层:只出现在飘落期间,multiply 只压在数字与背景上(§2) ---- */
+.falling-leaf-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 11;
+  width: 96px;
+  height: 76px;
+  mix-blend-mode: multiply;
+  opacity: 0; /* rAF 写入;锐度映射虚拟深度,z=1 时最锐 */
+}
+
+/* ---- z4 前景落叶:目标叶(hero)×2 轮转 + 整点风起叶 ----
+ * hero 默认 z-index 2(枝头期在数字层之后,§2 分层);脱离后由 rAF 提升为 20 */
+.falling-hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 96px;
+  height: 76px;
+  will-change: transform; /* 合成层只给飘落叶(§10) */
+  perspective: 300px; /* 衰老期卷曲面 rotateX(§3.2) */
+}
+
+.falling-hero__inner {
+  position: absolute;
+  inset: 0;
+}
+
+.falling-hero__face {
+  position: absolute;
+  inset: 0;
+  /* 正/反面由 rAF 按 flipCos 符号瞬时切换,禁过渡 */
+}
+
+.falling-gust-leaf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 76px;
+  /* z-index 由渲染按 kind 给出:behind=5(数字后方掠过),其余=20(§7) */
+}
+
+/* ---- z5 玻璃层:极弱线性高光 + 鼠标视差径向高光(§2) ---- */
+.falling-glass {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  width: 280px;
+  height: 140px;
+  z-index: 30;
+  border-radius: 10px;
+  overflow: hidden;
+  /* 左上 15% 方向的线性高光 */
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.015) 28%,
+    transparent 45%
+  );
+}
+
+.falling-glass__spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 0%, transparent 62%);
+  will-change: transform;
+}
