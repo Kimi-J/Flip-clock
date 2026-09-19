@@ -53,7 +53,7 @@
   left: 0;
   top: 0;
   z-index: 2;
-  transform-origin: 50% 90%; /* 绕叶柄摆 */
+  transform-origin: 50% 98.75%; /* 绕叶柄端摆(叶柄钉在枝条着生点上) */
 }
 
 /* 玻璃上的叶影:装饰叶的模糊副本,opacity ≤ 0.06,随摆动位移 ×0.3(§5) */
@@ -62,6 +62,7 @@
   left: 0;
   top: 0;
   z-index: 26;
+  transform-origin: 50% 98.75%; /* 与本体的叶柄端支点一致 */
   filter: blur(3px);
   opacity: 0.05;
 }
@@ -91,9 +92,14 @@
   display: flex;
   align-items: baseline;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 76px; /* 约占场景高 55–60% */
+  font-size: 64px; /* 分钟个位墨盒 ≈34×45,须小于叶片有效遮挡面(银杏有裂口/收腰,
+   * 96×76 的叶子横置后实心区 ~60×70),字号再大就遮不全 */
   line-height: 1;
   color: #3a2f28; /* 墨褐,非纯黑 */
+  /* Georgia 默认旧式数字(3/4/5/7/9 下伸、6/8 高升),换数时墨盒上下跳动,
+   * 叶片遮挡目标跟着漂;启用 lining figures:全部登高、齐落基线 */
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
 }
 
 /* 等宽数字槽:Georgia 数字是比例宽度("1"明显窄),换数会让整串重排位偏移。
@@ -116,6 +122,16 @@
   font-size: 10px;
   letter-spacing: 2px;
   color: rgba(58, 47, 40, 0.55); /* 同色系更浅 */
+  /* 秒数逐秒在变:比例宽度数字会让整行居中结果左右抖动,
+   * tabular-nums 固定每个数字的字宽,整行纹丝不动 */
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* 秒数两位的固定槽位:逐位替换,位与位之间永不相对移动 */
+.falling-sec-d {
+  display: inline-block;
+  width: 0.62em;
+  text-align: center;
 }
 
 /* ---- z3 叶影层:只出现在飘落期间,multiply 只压在数字与背景上(§2) ---- */

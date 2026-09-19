@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import "./falling.css";
 import {
   BRANCH_TIP,
-  COVER_SEC,
   DETACH_SEC,
   LEAF_H,
   LEAF_W,
@@ -24,7 +24,7 @@ import {
  *   连续动画(风场/摆动/飘落/叶脉)一律 ref 直写 DOM,每帧 setState 是性能红线
  * - 换数钉死在真实分钟边界(60.0s)由 minuteStamp 驱动,永不等叶子;
  *   叶片覆盖只是视觉掩护,不是逻辑依赖
- * - 目标叶(代表当前分钟)可被鼠标风吹得疯狂摆动,但脱离只发生在 57.6s
+ * - 目标叶(代表当前分钟)可被鼠标风吹得疯狂摆动,但脱离只发生在 59.2s
  */
 
 interface FallingSkinProps {
@@ -50,8 +50,12 @@ const VEIN_MAIN_D = "M50 77 C49.6 62 50 40 50 22";
 const VEIN_SIDES_D =
   "M47 54 C35 50 22 43 13 32 M47.6 49 C38 41 29 29 21 14 M48.6 45 C44 35 40 24 36 11 M53 54 C65 50 78 43 87 32 M52.4 49 C62 41 71 29 79 14 M51.4 45 C56 35 60 24 64 11";
 
-/** 目标叶"家"位(叶片中心锚在枝梢上方,叶柄搭在枝头) */
-const HERO_HOME = { x: BRANCH_TIP.x, y: BRANCH_TIP.y - 18 };
+/** 目标叶叶柄锚点:枝条末端上翘托住叶柄(锚点沉入枝梢,看上去连着枝) */
+const STEM_ANCHOR = { x: BRANCH_TIP.x - 4, y: BRANCH_TIP.y + 1.5 };
+/** 叶柄端到叶心的距离(叶形 viewBox 100×80,叶柄端在底部 y=79) */
+const STEM_D = LEAF_H * 0.9875 - LEAF_H / 2;
+/** 目标叶静息倾角:唯一翘向右上的叶子——它即将坠落,重心得先在高处 */
+const HERO_TILT = 55;
 
 /** 自然风摆参数:非谐波三频叠加(频率比 1 : ~2.17 : ~3.31)+ 慢速呼吸调幅。
  *  单正弦 = 机械节拍器;非谐波叠加的相位关系永不重复,肉眼读不出周期 */
@@ -105,9 +109,12 @@ const branchSway = (t: number) =>
 const gustEnvelope = (t: number) => Math.max(0, Math.sin((2 * Math.PI * t) / 19 + 1.3)) ** 3;
 
 interface DecorLeaf extends SwayParams {
+  /** 枝条上的着生点(叶柄端正坐在枝上) */
   x: number;
   y: number;
   size: number;
+  /** 静息倾角(绕叶柄):枝叶向四方错落斜伸,>90° 垂在枝下 */
+  rot: number;
   flip: boolean;
   gain: number;
   /** 摆动传播延迟:叶柄晚 ~40ms,距枝根越远越晚(§5) */
@@ -117,21 +124,23 @@ interface DecorLeaf extends SwayParams {
 /** 枝头装饰叶(永不掉落;摆动参数 seed 固定,不随时间变) */
 const DECOR: DecorLeaf[] = (() => {
   const rng = mulberry32(20771);
-  const spots: [number, number, number][] = [
-    // x, y, size —— 沿枝条曲线错落(枝条贴近面板顶缘,避开标题文字)
-    [56, 32, 30],
-    [91, 24, 25],
-    [126, 21, 34],
-    [161, 23, 27],
-    [195, 30, 36],
-    [221, 38, 26],
-    [237, 44, 30],
+  // x, y = 枝条曲线上的着生点;size;rot = 静息倾角(0=直立,90=水平,>90=垂下)
+  // 全部向右下方倾斜(风往一个方向吹的树枝),大小/间隔/角度刻意参差
+  const spots: [number, number, number, number][] = [
+    [56, 30, 28, 100],
+    [91, 23.5, 34, 122],
+    [126, 21.5, 24, 96],
+    [161, 24, 31, 130],
+    [195, 30, 26, 105],
+    [214, 36, 33, 126],
+    [231, 45, 25, 136],
   ];
-  return spots.map(([x, y, size], i) => ({
+  return spots.map(([x, y, size, rot], i) => ({
     ...makeSway(rng, 1.6 + rng() * 1.2),
     x,
     y,
     size,
+    rot,
     flip: rng() < 0.4,
     gain: 0.6 + rng() * 0.5,
     delay: 0.2 + i * 0.04 + rng() * 0.03,
@@ -147,10 +156,16 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 /** 调试参数(仅开发/截图自证用,生产无人传参):
  *  ?fsec=59.95 冻结分钟内秒数(摆出指定时刻的静态姿态)
- *  ?fflip=1   数字层显示下一分钟(配合 fsec 验证"遮挡中换数"不可见) */
+ *  ?fflip=1   数字层显示下一分钟(配合 fsec 验证"遮挡中换数"不可见)
+ *  ?fpile=60  挂载时直接铺满 N 片叶堆(测试整点风起,不等一小时)
+ *  ?fgust=1   挂载 1.5s 后自动起风(需配合 fpile 或已积累的叶堆)
+ *  以上任一存在时进入调试态:按 G 键随时手动起风(叶堆非空才有效) */
 const DBG = new URLSearchParams(window.location.search);
 const FSEC = DBG.has("fsec") ? parseFloat(DBG.get("fsec")!) : null;
 const FFLIP = DBG.get("fflip") === "1";
+const FPILE = DBG.has("fpile") ? clamp(parseInt(DBG.get("fpile")!, 10) || 0, 0, 60) : null;
+const FGUST = DBG.get("fgust") === "1";
+const FDEBUG = FSEC != null || FFLIP || FPILE != null || FGUST;
 
 interface ClockFace {
   hh: string[];
@@ -219,35 +234,52 @@ function Ginkgo({
 interface HeroState {
   mode: "branch" | "falling" | "hidden";
   path: FallPath | null;
-  pathReady: boolean;
   /** 属于哪一分钟(路径生成与 tSec 换算的基准) */
   bornStamp: number;
   slotIdx: number;
-  /** 枝头期逐帧记录的实时摆角(脱离瞬间的姿态混合起点) */
-  lastAngle: number;
   /** 脱离那一刻的枝头摆角(0.6s 内由此 blend 到路径姿态,消除"换叶"跳变) */
   detachAngle: number;
 }
 
 interface GustState {
-  leaves: { slot: number; path: GustPath }[];
+  leaves: { slot: number; back: boolean; wilt: number; path: GustPath }[];
   /** 风起时刻(ms, Date.now) */
   t0: number;
 }
 
+/** 叶堆条目:除了槽位,还记住这片叶子落地时哪面朝外、多枯(落堆无跳变的关键) */
+interface PileEntry {
+  slot: number;
+  back: boolean;
+  wilt: number;
+}
+
+/** 槽位默认姿态的叶堆条目(中途挂载/调试铺满时用——没人见过它们怎么落的):
+ *  朝向随机、枯萎度随机(背面偏青绿、正面偏枯褐),每次启动都是不一样的叶堆 */
+const slotEntry = (slot: number): PileEntry => {
+  const back = Math.random() < 0.25; // 正面枯褐 : 背面青绿 = 3:1(与飘落落地一致)
+  return {
+    slot,
+    back,
+    wilt: back ? 0.2 + Math.random() * 0.3 : 0.75 + Math.random() * 0.25,
+  };
+};
+
 export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSkinProps) {
   const [clock, setClock] = useState<ClockFace>(() => readClock(is24Hour));
-  const [pile, setPile] = useState<number[]>(() => {
-    // 中途挂载:按当前分钟数一次性铺好(§4.3);整点分钟内视为已清空
+  const [pile, setPile] = useState<PileEntry[]>(() => {
+    // 调试:?fpile=N 直接铺满 N 槽(不等一小时);否则中途挂载按当前分钟数铺好(§4.3)
+    if (FPILE != null) return Array.from({ length: FPILE }, (_, i) => slotEntry(i));
     const m = new Date().getMinutes();
-    return Array.from({ length: m }, (_, i) => i);
+    return Array.from({ length: m }, (_, i) => slotEntry(i));
   });
   const [gust, setGust] = useState<GustState | null>(null);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const timeRowRef = useRef<HTMLDivElement>(null);
   const minOnesRef = useRef<HTMLSpanElement>(null);
-  const secRef = useRef<HTMLSpanElement>(null);
+  const secTensRef = useRef<HTMLSpanElement>(null);
+  const secOnesRef = useRef<HTMLSpanElement>(null);
   const glassSpotRef = useRef<HTMLDivElement>(null);
   const heroRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
   const heroInnerRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
@@ -298,8 +330,8 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       minStamp: -1,
       lastNow: 0,
       heroes: [
-        { mode: "hidden", path: null, pathReady: false, bornStamp: 0, slotIdx: 0, lastAngle: 0, detachAngle: 0 },
-        { mode: "hidden", path: null, pathReady: false, bornStamp: 0, slotIdx: 0, lastAngle: 0, detachAngle: 0 },
+        { mode: "hidden", path: null, bornStamp: 0, slotIdx: 0, detachAngle: 0 },
+        { mode: "hidden", path: null, bornStamp: 0, slotIdx: 0, detachAngle: 0 },
       ] as HeroState[],
       coverBox: null as DigitBox | null,
       veinLen: [-1, -1] as [number, number],
@@ -311,7 +343,8 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       pileOff: new Map<number, { x: number; y: number }>(),
       pileActive: false,
       gustWind: 0,
-      pendingGustAt: -1, // 整点分钟内,风起到来的秒数
+      gustDoneMin: -1, // 本分钟是否已触发过整点风起(防重入)
+      curMinOfHour: 0, // 当前分钟在小时内的序号(整点风起判定用)
       glass: { x: 160, y: 90 },
       lastSecText: "",
     };
@@ -328,9 +361,49 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       S.wy = clamp(S.wy + (e.movementY / s) * 0.05, -30, 30);
     };
     window.addEventListener("pointermove", onMove);
+    // 指针离开窗口:立刻撤掉风场源(否则叶堆被离开前的最后位置持续排斥)
+    const onPointerGone = () => {
+      S.cursor.x = -9999;
+      S.cursor.y = -9999;
+    };
+    document.addEventListener("pointerleave", onPointerGone);
+    window.addEventListener("blur", onPointerGone);
 
-    // Canvas 实测字形墨盒/墨迹用(复用同一上下文)
-    const inkCtx = document.createElement("canvas").getContext("2d");
+    /** 整点风起:叶堆全部吹起(每小时 59 分 59.2s 自动触发;调试态可按 G 手动触发) */
+    const fireGust = () => {
+      if (gustMirror.current || pileMirror.current.length === 0) return;
+      S.gustWind = 6; // 来风冲量 ×6,枝叶狂摆
+      const paths = makeGustPaths(
+        pileMirror.current.map((e) => SLOTS[e.slot]),
+        S.minStamp,
+      );
+      const g: GustState = {
+        leaves: pileMirror.current.map((e, j) => ({ slot: e.slot, back: e.back, wilt: e.wilt, path: paths[j] })),
+        t0: Date.now(),
+      };
+      gustMirror.current = g;
+      setGust(g);
+    };
+    // 调试:G 键一键吹走(空堆时先补满,可反复测试);?fgust=1 挂载 1.5s 后自动起风
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "g" && e.key !== "G") return;
+      if (pileMirror.current.length === 0 && !gustMirror.current) {
+        updatePile(Array.from({ length: FPILE ?? 60 }, (_, i) => slotEntry(i)));
+      }
+      fireGust();
+    };
+    if (FDEBUG) window.addEventListener("keydown", onKey);
+    const fgustTimer = FGUST ? window.setTimeout(fireGust, 1500) : 0;
+
+    // Canvas 实测字形墨盒/墨迹用(复用同一上下文)。
+    // DOM 侧数字已启用 lining figures(font-variant-numeric),canvas 必须同步
+    // 启用 "lnum",否则采到的墨点是旧式高低不齐字形,与屏幕渲染不匹配;
+    // 运行时探测不支持则退化为字框判定(不采墨点)
+    const inkCtx = document.createElement("canvas").getContext("2d") as
+      | (CanvasRenderingContext2D & { fontFeatureSettings?: string })
+      | null;
+    const inkLnum = !!inkCtx && "fontFeatureSettings" in inkCtx;
+    if (inkCtx && inkLnum) inkCtx.fontFeatureSettings = '"lnum" 1';
 
     /** 把单个数字字符的墨点(步进 2px,alpha>64)换算成场景坐标追加到 out。
      *  canvas 墨盒中心对齐 DOM 墨盒中心(cx,cy),消除基线对齐误差 */
@@ -346,6 +419,9 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       const H = 96;
       ctx.canvas.width = W;
       ctx.canvas.height = H;
+      // 改 canvas 尺寸会重置全部上下文状态(含 fontFeatureSettings),必须重设
+      (ctx as CanvasRenderingContext2D & { fontFeatureSettings?: string }).fontFeatureSettings =
+        '"lnum" 1';
       ctx.font = font;
       ctx.textBaseline = "alphabetic";
       const m = ctx.measureText(ch);
@@ -388,11 +464,14 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       let h = (r.height / s) * 0.72;
       const cx = (r.left + r.width / 2 - wr.left) / s;
       const cy = (r.top + r.height / 2 - wr.top) / s;
-      // Canvas measureText 实测墨盒(actualBoundingBox):遮挡判定以真实墨迹为准
-      // (getComputedStyle 的 fontSize 不受 transform 影响,墨盒单位即场景逻辑像素)
-      if (inkCtx) {
+      // Canvas measureText 实测墨盒(actualBoundingBox):遮挡判定以真实墨迹为准。
+      // 前提:canvas 支持 fontFeatureSettings(已与 DOM 同步启用 lnum);
+      // 不支持时字形的墨盒/墨点都会与 lining 渲染错位,宁可退化为字框判定
+      if (inkCtx && inkLnum) {
         const cs = getComputedStyle(el);
         const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        // 上一帧 collectInk 改过 canvas 尺寸(状态被重置),lnum 每次测量前重设
+        inkCtx.fontFeatureSettings = '"lnum" 1';
         inkCtx.font = font;
         const m = inkCtx.measureText(el.textContent ?? "0");
         const iw = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
@@ -420,7 +499,7 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       return { cx, cy, w: w + 6, h: h + 6 };
     };
 
-    const updatePile = (next: number[]) => {
+    const updatePile = (next: PileEntry[]) => {
       pileMirror.current = next;
       setPile(next);
     };
@@ -440,12 +519,14 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       if (minStamp !== S.minStamp) {
         const first = S.minStamp === -1;
         S.minStamp = minStamp;
-        setClock(readClock(is24HourRef.current));
+        // flushSync:数字 DOM 与叶片位置在同一帧提交——setState 异步提交会
+        // 晚几毫秒,视觉跳变就落在覆盖峰值(60.0s)之后,遮挡再严也会穿帮
+        flushSync(() => setClock(readClock(is24HourRef.current)));
         const idx = minStamp % 2;
         const h = S.heroes[idx];
         const minuteOfHour = new Date(now).getMinutes();
         if (first) {
-          // 中途挂载(§4.3):>57.6s 跳过本分钟落叶;35-57.6s 以衰老进度静态呈现
+          // 中途挂载(§4.3):>59.2s 跳过本分钟落叶;35-59.2s 以衰老进度静态呈现
           h.mode = sec > DETACH_SEC ? "hidden" : "branch";
           // 调试冻结(FSEC):冻结在脱离之后时仍走正常"生成→脱离"流程,
           // 模拟全程在场(否则永远看不到飘落姿态,无法截图自证)
@@ -455,36 +536,67 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
           h.mode = "branch";
         }
         h.path = null;
-        h.pathReady = false;
         h.bornStamp = minStamp;
         h.slotIdx = minuteOfHour;
-        // 整点大事件:新小时第 60 片落堆(≈00.5s)→ 静默 0.5s → 风起(§7)
-        if (!first && minuteOfHour === 0) {
-          const lastPath = S.heroes[(minStamp - 1 + 2) % 2].path;
-          const landInNewMin = lastPath ? Math.max(0, lastPath.landSec - COVER_SEC) : 0.6;
-          S.pendingGustAt = Math.max(1.0, landInNewMin + 0.5);
-        } else {
-          S.pendingGustAt = -1;
-        }
+        S.curMinOfHour = minuteOfHour;
+        // 中途挂载:本分钟不补整点风起(避免半路空降的风暴)
+        if (first) S.gustDoneMin = minStamp;
       }
 
       const heroIdx = minStamp % 2;
       const hero = S.heroes[heroIdx];
 
-      // ---- 57.0s:生成路径(此刻重测 coverPoint,12h/显秒/缩放变化都能被覆盖) ----
-      if (hero.mode === "branch" && !hero.pathReady && sec >= 57) {
+      // ---- 风场结算:鼠标注入衰减 + 阶段风强(50→59.2s ramp up,脱离后回落) ----
+      const decay = Math.exp(-2.2 * dt);
+      S.wx *= decay;
+      S.wy *= decay;
+      S.gustWind *= Math.exp(-1.2 * dt);
+      let windFactor = 1;
+      if (sec > 50 && sec <= DETACH_SEC) windFactor = 1 + ((sec - 50) / (DETACH_SEC - 50)) * 0.8;
+      else if (sec > DETACH_SEC) windFactor = Math.max(1, 1.8 - 1.5 * (sec - DETACH_SEC));
+      windFactor = Math.max(windFactor, S.gustWind);
+      // 间歇阵风(~19s 一阵,立方包络):静态画面也有风的"呼吸感"
+      const windTotal = windFactor * (1 + 0.35 * gustEnvelope(secAll));
+      const tSec = secAll;
+
+      // 目标叶摆角(枝头期):微倾 + 自然风摆 + 风强加幅 + 鼠标风(铁律:只摆不掉,§5)
+      const heroAngle = () => {
+        const heroExtra = sec > 50 && sec <= DETACH_SEC ? 1 + ((sec - 50) / (DETACH_SEC - 50)) * 0.7 : 1;
+        const distH = Math.hypot(STEM_ANCHOR.x - S.cursor.x, STEM_ANCHOR.y - S.cursor.y);
+        const windAdd = clamp((S.wx / (1 + distH / 60)) * 2.2, -22, 22);
+        return (
+          HERO_TILT +
+          (branchSway(tSec - 0.3) * 0.9 + leafSway(HERO_SWAY, tSec)) * windTotal * heroExtra +
+          windAdd
+        );
+      };
+
+      // ---- 59.2s:叶柄断开,目标叶从枝头摘除,注册为前景落叶(§3.2) ----
+      // 路径在脱离这一刻生成:起点 = 当前真实叶心(叶柄锚在枝梢,叶心随摆动微移),
+      // 此刻重测 coverPoint(12h/显秒/缩放变化都被覆盖),首帧与枝头姿态零跳变。
+      // z 序同步提升:枝头期在数字层之后(z2),飘落期在数字层之前(z20)。
+      if (hero.mode === "branch" && sec >= DETACH_SEC) {
         const box = measureCoverBox();
         if (box) {
           S.coverBox = box;
+          const a = heroAngle();
+          const rad = (a * Math.PI) / 180;
+          const start = {
+            x: STEM_ANCHOR.x + Math.sin(rad) * STEM_D,
+            y: STEM_ANCHOR.y - Math.cos(rad) * STEM_D,
+          };
           hero.path = makeFallPath({
             seed: minStamp,
-            start: HERO_HOME,
+            start,
             cover: box,
             slot: SLOTS[hero.slotIdx],
           });
-          hero.pathReady = true;
+          hero.mode = "falling";
+          hero.detachAngle = a;
+          const el = heroRefs[heroIdx].current;
+          if (el) el.style.zIndex = "20";
           // 调试:FSEC 模式下画出实测墨盒(红框)、墨点(红点)与覆盖率,肉眼核对遮挡
-          if (FSEC != null && hero.path) {
+          if (FSEC != null) {
             const dbg = document.createElement("canvas");
             dbg.width = 320;
             dbg.height = 180;
@@ -505,31 +617,10 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
             wrapRef.current?.appendChild(dbg);
           }
         }
+        // box 为 null(ref 未就绪)时下一帧重试,叶片继续枝头摆动
       }
-      // ---- 57.6s:叶柄断开,目标叶从枝头摘除,注册为前景落叶(§3.2) ----
-      // z 序同步提升:枝头期在数字层之后(z1),飘落期在数字层之前(z4);
-      // 记录脱离瞬间的枝头摆角,首帧姿态由它混合过渡(不做"换叶"跳变)
-      if (hero.mode === "branch" && hero.pathReady && sec >= DETACH_SEC) {
-        hero.mode = "falling";
-        hero.detachAngle = hero.lastAngle;
-        const el = heroRefs[heroIdx].current;
-        if (el) el.style.zIndex = "20";
-      }
-
-      // ---- 风场结算:鼠标注入衰减 + 阶段风强(50→57.6s ramp up,脱离后回落) ----
-      const decay = Math.exp(-2.2 * dt);
-      S.wx *= decay;
-      S.wy *= decay;
-      S.gustWind *= Math.exp(-1.2 * dt);
-      let windFactor = 1;
-      if (sec > 50 && sec <= DETACH_SEC) windFactor = 1 + ((sec - 50) / 7.6) * 0.8;
-      else if (sec > DETACH_SEC) windFactor = Math.max(1, 1.8 - 1.5 * (sec - DETACH_SEC));
-      windFactor = Math.max(windFactor, S.gustWind);
-      // 间歇阵风(~19s 一阵,立方包络):静态画面也有风的"呼吸感"
-      const windTotal = windFactor * (1 + 0.35 * gustEnvelope(secAll));
 
       // ---- 枝条低频大摆 + 装饰叶(非谐波三频 + 呼吸调幅 + 传播延迟,§5) ----
-      const tSec = secAll;
       DECOR.forEach((leaf, i) => {
         const el = decorRefs.current[i];
         const sh = decorShadowRefs.current[i];
@@ -544,10 +635,13 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
         const windAdd = clamp(S.decorLag[i] * 2.2, -18, 18);
         const ang =
           (branchSway(tSec - leaf.delay) * leaf.gain + leafSway(leaf, tSec)) * windTotal + windAdd;
-        el.style.transform = `translate(${leaf.x - leaf.size / 2}px, ${leaf.y - (leaf.size * 0.8) / 2}px) rotate(${ang}deg)`;
+        // 叶柄端钉在枝条着生点上(transform-origin 在叶柄端),绕柄摆动
+        const tx = leaf.x - leaf.size / 2;
+        const ty = leaf.y - leaf.size * 0.79;
+        el.style.transform = `translate(${tx}px, ${ty}px) rotate(${leaf.rot + ang}deg)`;
         if (sh) {
           // 玻璃叶影:摆动位移 ×0.3 的模糊副本(§5)
-          sh.style.transform = `translate(${leaf.x - leaf.size / 2 + 6}px, ${leaf.y - (leaf.size * 0.8) / 2 + 8}px) rotate(${ang * 0.3}deg)`;
+          sh.style.transform = `translate(${tx + 6}px, ${ty + 8}px) rotate(${leaf.rot + ang * 0.3}deg)`;
         }
       });
 
@@ -574,19 +668,15 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
           const grow = 0.35 + 0.65 * (1 - (1 - growU) ** 3);
           // 衰老(35→50s):叶柄向叶尖褪色 + 微卷(§3.2)
           const aging = clamp((sec - 35) / 15, 0, 1);
-          // 风强期目标叶柄部摆动幅度单独加大(§3.2)
-          const heroExtra = sec > 50 && sec <= DETACH_SEC ? 1 + ((sec - 50) / 7.6) * 0.7 : 1;
-          const dxh = HERO_HOME.x - S.cursor.x;
-          const dyh = HERO_HOME.y - S.cursor.y;
-          const distH = Math.hypot(dxh, dyh);
-          // 铁律:可被风吹得疯狂摆动,但脱离只发生在 57.6s(摆动照常,不断柄)
-          const windAdd = clamp((S.wx / (1 + distH / 60)) * 2.2, -22, 22);
-          const ang =
-            (branchSway(tSec - 0.3) * 0.9 + leafSway(HERO_SWAY, tSec)) * windTotal * heroExtra +
-            windAdd;
-          h.lastAngle = ang; // 逐帧记录,脱离瞬间的姿态混合起点
+          const ang = heroAngle();
+          // 叶柄锚定枝梢:摆动与生长都绕叶柄端结算(绕叶心会让叶柄漂浮脱枝),
+          // translate 反解出"叶柄端正好落在 STEM_ANCHOR"的元素左上角
+          const sA = (ang * Math.PI) / 180;
+          const d = STEM_D * grow;
+          const tx = STEM_ANCHOR.x - LEAF_W / 2 + Math.sin(sA) * d;
+          const ty = STEM_ANCHOR.y - LEAF_H / 2 - Math.cos(sA) * d;
           el.style.opacity = String(fade);
-          el.style.transform = `translate(${HERO_HOME.x - LEAF_W / 2}px, ${HERO_HOME.y - LEAF_H / 2}px) rotate(${ang}deg) scale(${grow})`;
+          el.style.transform = `translate(${tx}px, ${ty}px) rotate(${ang}deg) scale(${grow})`;
           const inner = heroInnerRefs[i].current;
           if (inner) inner.style.transform = `rotateX(${aging * 14}deg) scaleY(${1 - aging * 0.06})`;
           const wilt = wiltRefs[i].current;
@@ -619,10 +709,20 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
           h.mode = "hidden";
           el.style.opacity = "0";
           if (shadow) shadow.style.opacity = "0";
-          const next = pileMirror.current.includes(h.slotIdx)
-            ? pileMirror.current
-            : [...pileMirror.current, h.slotIdx];
-          updatePile(next);
+          // 整点风暴已在吹(跨边界的第 60 片):不落堆,直接卷入风中
+          if (!gustMirror.current) {
+            // 落地姿态来自路径:哪面朝外(landBack)、多枯(背面青绿 0.3 / 正面全枯 1)
+            // ——叶堆按此渲染,落堆瞬间无换面/变色跳变
+            const entry: PileEntry = {
+              slot: h.slotIdx,
+              back: path.landBack,
+              wilt: path.landBack ? 0.3 : 1,
+            };
+            const next = pileMirror.current.some((e) => e.slot === h.slotIdx)
+              ? pileMirror.current
+              : [...pileMirror.current, entry];
+            updatePile(next);
+          }
           continue;
         }
         const p = path.sample(tFall);
@@ -650,43 +750,37 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
         }
       }
 
-      // ---- 整点风起(§7):编排器串行,风起延迟已含"第 60 片落堆 + 静默 0.5s" ----
+      // ---- 整点风起(§7):59 分 59.2s,与最后一片目标叶脱离同一刻 ----
+      // 地面叶堆全部被吹起、飘满窗口,再分头从不同边出画;新小时从空堆开始
       if (
-        S.pendingGustAt >= 0 &&
-        sec >= S.pendingGustAt &&
+        S.curMinOfHour === 59 &&
+        sec >= DETACH_SEC &&
+        S.gustDoneMin !== minStamp &&
         !gustMirror.current &&
         pileMirror.current.length > 0
       ) {
-        S.pendingGustAt = -1;
-        S.gustWind = 6; // 左侧来风冲量 ×6
-        const paths = makeGustPaths(
-          pileMirror.current.map((si) => SLOTS[si]),
-          minStamp,
-        );
-        const g: GustState = {
-          leaves: pileMirror.current.map((si, j) => ({ slot: si, path: paths[j] })),
-          t0: now,
-        };
-        gustMirror.current = g;
-        setGust(g);
+        S.gustDoneMin = minStamp;
+        fireGust();
       }
       const g = gustMirror.current;
       if (g) {
         const gt = (now - g.t0) / 1000;
         let allDone = true;
+        let mounted = 0;
         g.leaves.forEach((leaf, j) => {
           const el = gustRefs.current[j];
-          if (!el) return;
+          if (!el) return; // setGust 是异步的,React 提交前 ref 未就绪
+          mounted++;
           const local = (gt - leaf.path.delay) / leaf.path.dur;
           if (local < 1) allDone = false;
           const pose = leaf.path.sample(clamp(local, 0, 1));
-          const slotDef = SLOTS[leaf.slot];
           const blur = Math.max(0, 0.9 - pose.z) * 7;
           el.style.opacity = String(pose.opacity);
-          el.style.transform = `translate(${pose.x - LEAF_W / 2}px, ${pose.y - LEAF_H / 2}px) rotate(${pose.rot}deg) scale(${pose.scale}) scaleX(${Math.abs(pose.flipCos) * (slotDef.flip ? -1 : 1)})`;
+          el.style.transform = `translate(${pose.x - LEAF_W / 2}px, ${pose.y - LEAF_H / 2}px) rotate(${pose.rot}deg) scale(${pose.scale}) scaleX(${Math.abs(pose.flipCos)})`;
           el.style.filter = blur > 0.3 ? `blur(${blur}px)` : "";
         });
-        if (allDone) {
+        // mounted===0 = 风起叶还未挂载,绝不能判定"全部出画"(否则触发帧即清场)
+        if (allDone && mounted > 0) {
           // 全部出画,叶堆清空,场景回到新的一小时(§7)
           gustMirror.current = null;
           setGust(null);
@@ -697,12 +791,12 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       // ---- 叶堆鼠标推挤:近处叶子被推动,弹簧回位(§5) ----
       if (!g) {
         let anyActive = false;
-        for (const si of pileMirror.current) {
-          const slot = SLOTS[si];
+        for (const e of pileMirror.current) {
+          const slot = SLOTS[e.slot];
           const dx = slot.x - S.cursor.x;
           const dy = slot.y - S.cursor.y;
           const dist = Math.hypot(dx, dy);
-          const off = S.pileOff.get(si) ?? { x: 0, y: 0 };
+          const off = S.pileOff.get(e.slot) ?? { x: 0, y: 0 };
           let tx = 0;
           let ty = 0;
           if (dist < 64 && dist > 0.01) {
@@ -713,36 +807,37 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
           const rate = tx !== 0 || ty !== 0 ? 10 : 5; // 推开快、回位慢(弹簧感)
           off.x += (tx - off.x) * Math.min(1, dt * rate);
           off.y += (ty - off.y) * Math.min(1, dt * rate);
-          S.pileOff.set(si, off);
+          S.pileOff.set(e.slot, off);
           if (Math.abs(off.x) > 0.1 || Math.abs(off.y) > 0.1) anyActive = true;
         }
         // 静止时叶堆零动画(性能铁律):仅活动期写 transform
         if (anyActive || S.pileActive) {
           S.pileActive = anyActive;
-          for (const si of pileMirror.current) {
-            const el = pileRefs.current.get(si);
+          for (const e of pileMirror.current) {
+            const el = pileRefs.current.get(e.slot);
             if (!el) continue;
-            const slot = SLOTS[si];
-            const off = S.pileOff.get(si) ?? { x: 0, y: 0 };
-            el.style.transform = `translate(${slot.x + off.x}px, ${slot.y + off.y}px) rotate(${slot.rot + off.x * 0.5}deg) scale(${slot.scale})`;
+            const slot = SLOTS[e.slot];
+            const off = S.pileOff.get(e.slot) ?? { x: 0, y: 0 };
+            el.style.transform = `translate(${slot.x + off.x}px, ${slot.y + off.y}px) rotate(${slot.rot + off.x * 0.5}deg) scale(${slot.scale * slot.flat}, ${slot.scale})`;
           }
         }
       }
 
-      // ---- 玻璃视差高光(slow mouse = 视差,§2) ----
+      // ---- 玻璃视差高光(slow mouse = 视差,§2;指针离窗后高光停在原地) ----
       const spot = glassSpotRef.current;
-      if (spot) {
+      if (spot && S.cursor.x > -1000) {
         S.glass.x += (S.cursor.x - S.glass.x) * Math.min(1, dt * 2);
         S.glass.y += (S.cursor.y - S.glass.y) * Math.min(1, dt * 2);
         spot.style.transform = `translate(${S.glass.x - 70}px, ${S.glass.y - 70}px)`;
       }
 
       // ---- 显秒开:日期行小字秒数(§8;直写文本,不触发重渲染) ----
-      if (showSecondsRef.current && secRef.current) {
+      if (showSecondsRef.current && secTensRef.current && secOnesRef.current) {
         const txt = String(Math.floor(sec)).padStart(2, "0");
         if (txt !== S.lastSecText) {
           S.lastSecText = txt;
-          secRef.current.textContent = txt;
+          secTensRef.current.textContent = txt[0];
+          secOnesRef.current.textContent = txt[1];
         }
       }
     };
@@ -751,6 +846,10 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onPointerGone);
+      window.removeEventListener("blur", onPointerGone);
+      if (FDEBUG) window.removeEventListener("keydown", onKey);
+      if (fgustTimer) clearTimeout(fgustTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -789,8 +888,9 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
             </radialGradient>
           </defs>
           <rect x="20" y="20" width="280" height="140" rx="10" fill="url(#fallingWall)" stroke="rgba(58,47,40,0.06)" />
+          {/* 枝条:主枝横斜,末梢上翘托住目标叶叶柄(BRANCH_TIP) */}
           <path
-            d="M24 40 C 88 14, 168 16, 250 58"
+            d="M24 40 C 88 14, 168 16, 226 40 C 240 48, 248 60, 250 74"
             fill="none"
             stroke="#6b4f35"
             strokeWidth="3"
@@ -798,21 +898,23 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
           />
           {/* 落叶堆(z1,先落在下;风起时由前景编排器接管,此处不渲染) */}
           {!gust &&
-            pile.map((si) => {
-              const s = SLOTS[si];
+            pile.map((e) => {
+              const s = SLOTS[e.slot];
               return (
                 <g
-                  key={si}
+                  key={e.slot}
                   ref={(el) => {
-                    if (el) pileRefs.current.set(si, el);
-                    else pileRefs.current.delete(si);
+                    if (el) pileRefs.current.set(e.slot, el);
+                    else pileRefs.current.delete(e.slot);
                   }}
                   style={{
-                    transform: `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg) scale(${s.scale})`,
+                    // flat:平躺程度(scaleX 压缩)——叶子随便躺,不都是完全展开
+                    transform: `translate(${s.x}px, ${s.y}px) rotate(${s.rot}deg) scale(${s.scale * s.flat}, ${s.scale})`,
                   }}
                 >
-                  {/* 叶片中心锚在槽位点(旋转围绕落点);嵌套 svg 必须显式宽高 */}
-                  <Ginkgo back={s.flip} wilt={s.wilt} x={-48} y={-38} w={96} h={76} />
+                  {/* 叶片中心锚在槽位点(旋转围绕落点);嵌套 svg 必须显式宽高。
+                      朝向/枯萎度来自落地瞬间的真实姿态(见落堆登记) */}
+                  <Ginkgo back={e.back} wilt={e.wilt} x={-48} y={-38} w={96} h={76} />
                 </g>
               );
             })}
@@ -829,7 +931,7 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
             style={{
               width: leaf.size,
               height: leaf.size * 0.8,
-              transform: `translate(${leaf.x - leaf.size / 2 + 6}px, ${leaf.y - (leaf.size * 0.8) / 2 + 8}px)`,
+              transform: `translate(${leaf.x - leaf.size / 2 + 6}px, ${leaf.y - leaf.size * 0.79 + 8}px) rotate(${leaf.rot}deg)`,
             }}
           >
             <Ginkgo flip={leaf.flip} />
@@ -847,7 +949,7 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
             style={{
               width: leaf.size,
               height: leaf.size * 0.8,
-              transform: `translate(${leaf.x - leaf.size / 2}px, ${leaf.y - (leaf.size * 0.8) / 2}px)`,
+              transform: `translate(${leaf.x - leaf.size / 2}px, ${leaf.y - leaf.size * 0.79}px) rotate(${leaf.rot}deg)`,
             }}
           >
             <Ginkgo flip={leaf.flip} wilt={0.12} />
@@ -870,7 +972,13 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
             {showSeconds && (
               <>
                 {" · "}
-                <span ref={secRef}>00</span>
+                {/* 两位各自固定槽位:比例宽度字体下 "1" 明显窄,整秒替换会让整行抖动 */}
+                <span className="falling-sec-d" ref={secTensRef}>
+                  0
+                </span>
+                <span className="falling-sec-d" ref={secOnesRef}>
+                  0
+                </span>
               </>
             )}
           </div>
@@ -925,7 +1033,7 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
                 transform: `translate(${SLOTS[leaf.slot].x - LEAF_W / 2}px, ${SLOTS[leaf.slot].y - LEAF_H / 2}px)`,
               }}
             >
-              <Ginkgo back={SLOTS[leaf.slot].flip} wilt={SLOTS[leaf.slot].wilt} />
+              <Ginkgo back={leaf.back} wilt={leaf.wilt} />
             </div>
           ))}
 
