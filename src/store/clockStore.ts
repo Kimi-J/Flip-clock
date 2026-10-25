@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { emit } from "@tauri-apps/api/event";
 
-export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink" | "clay";
+export type ThemeName = "amber" | "minimal" | "midnight" | "matrix" | "noir" | "pure" | "voxel" | "synthwave" | "ink" | "clay" | "gummy" | "sill";
 export type BackgroundMode = "minimal" | "aurora" | "starry";
 /** 小窗皮肤:与全屏主题正交的独立维度,皮肤自带完整配色与窗口几何 */
 export type WidgetSkinName = "ticket" | "mecha" | "falling";
@@ -57,6 +57,21 @@ interface ClockStore extends ClockSettings {
   rehydrate: (patch?: Partial<ClockSettings>) => void;
 }
 
+export const THEME_OPTIONS: { value: ThemeName; label: string; swatch: string }[] = [
+  { value: "noir", label: "极简黑", swatch: "linear-gradient(135deg,#1a1a1a,#000000)" },
+  { value: "pure", label: "极简白", swatch: "linear-gradient(135deg,#ededed,#ffffff)" },
+  { value: "amber", label: "暖琥珀", swatch: "linear-gradient(135deg,#f4a261,#e76f51)" },
+  { value: "minimal", label: "晨雾白", swatch: "linear-gradient(135deg,#f5efe0,#e8dfc8)" },
+  { value: "midnight", label: "午夜蓝", swatch: "linear-gradient(135deg,#5b9dff,#7850dc)" },
+  { value: "matrix", label: "矩阵绿", swatch: "linear-gradient(135deg,#00ff88,#003322)" },
+  { value: "voxel", label: "像素界", swatch: "linear-gradient(135deg,#3a1f5c,#00f0ff)" },
+  { value: "synthwave", label: "霓虹波", swatch: "linear-gradient(135deg,#ff006e,#3a0ca3)" },
+  { value: "ink", label: "水墨韵", swatch: "linear-gradient(135deg,#e8e4dc,#2a2a2a)" },
+  { value: "clay", label: "奶芙紫", swatch: "linear-gradient(135deg,#f7f3ff,#a78bfa)" },
+  { value: "gummy", label: "软糖捏捏", swatch: "linear-gradient(135deg,#ffb7c9,#ff7ba2)" },
+  { value: "sill", label: "林间小屋", swatch: "linear-gradient(135deg,#e8d5b7,#6b7f5e)" },
+];
+
 const STORAGE_KEY = "flip-clock-settings-v1";
 
 function loadSettings(): Partial<ClockSettings> {
@@ -64,6 +79,11 @@ function loadSettings(): Partial<ClockSettings> {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return applyUrlOverrides({});
     const parsed = JSON.parse(raw) as Partial<ClockSettings> & { backgroundMode?: string };
+    // 值域校验:localStorage 可能残留已下线主题(如已删除的"星月梦游"dream),
+    // 无效值会使 data-theme 指向不存在的 CSS 块导致主题整体失效——清除后回落默认
+    if (parsed.theme && !THEME_OPTIONS.some((o) => o.value === parsed.theme)) {
+      delete parsed.theme;
+    }
     // 旧值迁移:particles→starry, solid→minimal(aurora 保持)
     const bg = parsed.backgroundMode as string | undefined;
     if (bg === "particles") parsed.backgroundMode = "starry";
@@ -163,19 +183,6 @@ function persist(s: ClockSettings) {
     emit("settings-sync", s).catch(() => {});
   }
 }
-
-export const THEME_OPTIONS: { value: ThemeName; label: string; swatch: string }[] = [
-  { value: "noir", label: "极简黑", swatch: "linear-gradient(135deg,#1a1a1a,#000000)" },
-  { value: "pure", label: "极简白", swatch: "linear-gradient(135deg,#ededed,#ffffff)" },
-  { value: "amber", label: "暖琥珀", swatch: "linear-gradient(135deg,#f4a261,#e76f51)" },
-  { value: "minimal", label: "晨雾白", swatch: "linear-gradient(135deg,#f5efe0,#e8dfc8)" },
-  { value: "midnight", label: "午夜蓝", swatch: "linear-gradient(135deg,#5b9dff,#7850dc)" },
-  { value: "matrix", label: "矩阵绿", swatch: "linear-gradient(135deg,#00ff88,#003322)" },
-  { value: "voxel", label: "像素界", swatch: "linear-gradient(135deg,#3a1f5c,#00f0ff)" },
-  { value: "synthwave", label: "霓虹波", swatch: "linear-gradient(135deg,#ff006e,#3a0ca3)" },
-  { value: "ink", label: "水墨韵", swatch: "linear-gradient(135deg,#e8e4dc,#2a2a2a)" },
-  { value: "clay", label: "奶芙紫", swatch: "linear-gradient(135deg,#f7f3ff,#a78bfa)" },
-];
 
 export const BACKGROUND_OPTIONS: { value: BackgroundMode; label: string }[] = [
   { value: "minimal", label: "极简" },

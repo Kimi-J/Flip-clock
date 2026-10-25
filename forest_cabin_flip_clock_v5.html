@@ -1,0 +1,1560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#21170f" />
+<title>林间小屋 · 翻页时钟</title>
+
+<!--
+DESIGN PLAN
+Place: a quiet timber cabin at the edge of a pine forest.
+Time: follows the viewer's local time; dawn/day/dusk/night change the window light.
+Story: the cabin is still, a warm wall lamp is on, and the clock is built into a walnut wall cabinet.
+Palette: paper cream, pine green, warm walnut, deep ink-brown, muted brass, ember amber, dusty sky.
+Layers: window/forest -> timber wall -> structural beams -> clock cabinet -> mantel/table -> edge foliage/grain.
+Hero: the clock cabinet. It stays centered, at least half the viewport wide and roughly one-third high.
+Contacts: cabinet is visually bolted into the wall; cards sit inside the cabinet; hinges/rollers align to the card split;
+          mantel objects rest on a surface; foliage stays at the side edges and never covers the clock.
+Interaction: S toggles seconds; D toggles date; F toggles fullscreen. Preferences persist locally.
+Runtime: this file works by itself with an embedded JS fallback. When online it progressively mounts the same UI
+         through React 18. The React wrapper was authored in TypeScript and its source notes are preserved below.
+-->
+
+<style>
+  :root {
+    color-scheme: dark;
+    --ink: #1e1a16;
+    --deep-ink: #171512;
+    --paper: #eee1c9;
+    --paper-soft: #d9c8ab;
+    --walnut: #4b3022;
+    --walnut-dark: #2a1b14;
+    --pine: #284238;
+    --pine-dark: #1b3029;
+    --brass: #aa8653;
+    --brass-light: #d0ae72;
+    --ember: #c77737;
+    --ember-soft: #e1a45a;
+    --sky-top: #b7a785;
+    --sky-bottom: #d5b982;
+    --forest-far: #5c725f;
+    --forest-near: #294336;
+    --ambient: rgba(207, 139, 73, .2);
+    --clock-w: min(78vw, 1120px);
+    --clock-h: clamp(330px, 39vh, 470px);
+    --card-h: clamp(180px, 24vh, 290px);
+    --shadow: 0 28px 70px rgba(8, 7, 5, .38);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body, #root {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: #21170f;
+    font-family:
+      "SF Pro Display", "PingFang SC", "Microsoft YaHei",
+      system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--paper);
+  }
+
+  button, input { font: inherit; }
+
+  .react-host,
+  .cabin {
+    width: 100%;
+    height: 100%;
+  }
+
+  .cabin {
+    position: relative;
+    min-height: 100svh;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(80% 55% at 50% 38%, rgba(225, 174, 107, .10), transparent 70%),
+      linear-gradient(180deg, #3b281c 0%, #2d1e16 58%, #21160f 100%);
+    transition: background .9s ease, filter .9s ease;
+  }
+
+  .cabin.phase-dawn {
+    --sky-top: #b6a29b;
+    --sky-bottom: #e2b77d;
+    --forest-far: #6b7969;
+    --forest-near: #2c4438;
+    --ambient: rgba(226, 147, 75, .24);
+  }
+
+  .cabin.phase-day {
+    --sky-top: #c8bf9f;
+    --sky-bottom: #e4ca96;
+    --forest-far: #687d68;
+    --forest-near: #2a4738;
+    --ambient: rgba(224, 174, 94, .16);
+  }
+
+  .cabin.phase-dusk {
+    --sky-top: #7c7581;
+    --sky-bottom: #cf9069;
+    --forest-far: #4e5d55;
+    --forest-near: #22362f;
+    --ambient: rgba(211, 111, 60, .24);
+  }
+
+  .cabin.phase-night {
+    --sky-top: #28323d;
+    --sky-bottom: #59605d;
+    --forest-far: #30463f;
+    --forest-near: #182923;
+    --ambient: rgba(203, 123, 55, .28);
+  }
+
+  .cabin::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -8;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(255,255,255,.018) 0 1px,
+        transparent 1px 8.6vh
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 19.8vw,
+        rgba(20, 11, 7, .23) 19.8vw 20vw
+      ),
+      linear-gradient(90deg,
+        rgba(255,255,255,.025),
+        transparent 14% 86%,
+        rgba(0,0,0,.10)
+      );
+    opacity: .88;
+  }
+
+  .wood-grain {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+    opacity: .16;
+    background:
+      repeating-radial-gradient(
+        ellipse at 15% 25%,
+        transparent 0 18px,
+        rgba(240,214,170,.14) 19px 20px,
+        transparent 21px 34px
+      ),
+      repeating-linear-gradient(
+        3deg,
+        transparent 0 13px,
+        rgba(255,255,255,.05) 14px,
+        transparent 15px 29px
+      );
+    filter: contrast(125%);
+  }
+
+  .vignette {
+    position: absolute;
+    inset: -8%;
+    z-index: 38;
+    pointer-events: none;
+    box-shadow: inset 0 0 180px 80px rgba(7, 6, 4, .32);
+  }
+
+  .grain {
+    position: absolute;
+    inset: 0;
+    z-index: 41;
+    pointer-events: none;
+    opacity: .055;
+    background-image:
+      radial-gradient(circle at 12% 22%, #fff 0 0.55px, transparent .65px),
+      radial-gradient(circle at 72% 66%, #fff 0 0.5px, transparent .6px),
+      radial-gradient(circle at 48% 42%, #000 0 0.45px, transparent .55px);
+    background-size: 8px 9px, 11px 12px, 7px 8px;
+  }
+
+  .top-beam {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: clamp(58px, 8vh, 92px);
+    z-index: 6;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.07), transparent 18%),
+      repeating-linear-gradient(94deg,
+        rgba(255,255,255,.018) 0 20px,
+        rgba(0,0,0,.04) 21px 24px,
+        transparent 25px 46px
+      ),
+      linear-gradient(180deg, #4f3323, #352318 58%, #2b1c14);
+    box-shadow:
+      0 8px 24px rgba(0,0,0,.28),
+      inset 0 -1px rgba(255,255,255,.07),
+      inset 0 -8px 16px rgba(0,0,0,.15);
+  }
+
+  .side-beam {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: clamp(26px, 3.3vw, 54px);
+    z-index: 5;
+    background:
+      repeating-linear-gradient(4deg,
+        rgba(255,255,255,.024) 0 13px,
+        transparent 14px 34px
+      ),
+      linear-gradient(90deg, #2b1a12, #4a3021 42%, #2b1b13);
+    box-shadow: 0 0 24px rgba(0,0,0,.24);
+  }
+  .side-beam.left { left: 2.4vw; }
+  .side-beam.right { right: 2.4vw; }
+
+  .window {
+    position: absolute;
+    left: 5.3vw;
+    top: 13.8vh;
+    width: clamp(220px, 22vw, 360px);
+    height: clamp(285px, 43vh, 470px);
+    z-index: 0;
+    border: clamp(12px, 1.5vw, 22px) solid #342219;
+    border-radius: 5px;
+    background: #1b1612;
+    box-shadow:
+      0 24px 45px rgba(0,0,0,.28),
+      inset 0 0 0 2px rgba(224,190,130,.08);
+    overflow: hidden;
+  }
+
+  .window::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    box-shadow: inset 0 0 28px 8px rgba(17, 11, 8, .48);
+    pointer-events: none;
+  }
+
+  .window-sky {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 68% 28%, rgba(255,240,194,.20), transparent 17%),
+      linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+    transition: background 1s ease;
+  }
+
+  .phase-night .window-sky::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: .45;
+    background-image:
+      radial-gradient(circle at 18% 16%, rgba(255,255,230,.9) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 65% 12%, rgba(255,255,230,.75) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 79% 31%, rgba(255,255,230,.65) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 38% 25%, rgba(255,255,230,.6) 0 .8px, transparent 1.3px),
+      radial-gradient(circle at 88% 10%, rgba(255,255,230,.72) 0 .8px, transparent 1.3px);
+  }
+
+  .sun-moon {
+    position: absolute;
+    right: 13%;
+    top: 11%;
+    width: clamp(34px, 4vw, 58px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #f3d6a0;
+    box-shadow:
+      0 0 26px rgba(250,221,165,.30),
+      0 0 70px rgba(245,199,117,.18);
+    opacity: .72;
+    transform: translateY(0);
+    transition: all 1s ease;
+  }
+  .phase-night .sun-moon {
+    background: #dcd7c5;
+    opacity: .82;
+    box-shadow: 0 0 24px rgba(220,220,205,.16);
+  }
+  .phase-dusk .sun-moon { transform: translateY(44px); opacity: .62; }
+
+  .forest-layer {
+    position: absolute;
+    left: -8%;
+    right: -8%;
+    bottom: 0;
+    height: 72%;
+    transition: background .9s ease;
+  }
+
+  .forest-layer.far {
+    bottom: 14%;
+    opacity: .58;
+    filter: saturate(.8);
+    background:
+      linear-gradient(134deg, transparent 0 47%, var(--forest-far) 48% 58%, transparent 59%) 0 100% / 88px 180px repeat-x,
+      linear-gradient(226deg, transparent 0 47%, var(--forest-far) 48% 58%, transparent 59%) 42px 100% / 96px 205px repeat-x;
+  }
+
+  .forest-layer.mid {
+    bottom: 2%;
+    opacity: .84;
+    background:
+      linear-gradient(132deg, transparent 0 48%, var(--forest-near) 49% 61%, transparent 62%) -12px 100% / 104px 235px repeat-x,
+      linear-gradient(228deg, transparent 0 48%, var(--forest-near) 49% 61%, transparent 62%) 42px 100% / 112px 260px repeat-x;
+  }
+
+  .forest-floor {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 21%;
+    background: linear-gradient(180deg, rgba(25,47,38,.28), rgba(20,34,29,.94));
+  }
+
+  .window-cross-v,
+  .window-cross-h {
+    position: absolute;
+    z-index: 15;
+    background:
+      linear-gradient(90deg, #2e1e16, #493022 50%, #2c1c15);
+    box-shadow: 0 0 8px rgba(0,0,0,.36);
+  }
+  .window-cross-v { top: 0; bottom: 0; left: 49%; width: 12px; }
+  .window-cross-h {
+    left: 0; right: 0; top: 48%; height: 11px;
+    background: linear-gradient(180deg, #2e1e16, #493022 50%, #2c1c15);
+  }
+
+  .curtain {
+    position: absolute;
+    top: -3%;
+    left: -2%;
+    right: -2%;
+    height: 16%;
+    z-index: 17;
+    background:
+      repeating-linear-gradient(92deg,
+        #b9a98d 0 18px,
+        #a6967d 19px 24px,
+        #c2b397 25px 44px
+      );
+    opacity: .78;
+    border-bottom: 1px solid rgba(255,255,255,.16);
+    box-shadow: 0 8px 14px rgba(22,15,10,.16);
+  }
+
+  .lamp {
+    position: absolute;
+    right: 8.2vw;
+    top: 20vh;
+    z-index: 4;
+    width: 94px;
+    height: 200px;
+  }
+
+  .lamp .arm {
+    position: absolute;
+    right: 28px;
+    top: 4px;
+    width: 16px;
+    height: 76px;
+    border-radius: 9px;
+    background: linear-gradient(90deg, #6d5333, #b08a50 45%, #73562f);
+    box-shadow: 4px 3px 10px rgba(0,0,0,.28);
+  }
+
+  .lamp .arm::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -30px;
+    width: 54px;
+    height: 14px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #b08a50, #6e512e);
+  }
+
+  .lamp .shade {
+    position: absolute;
+    top: 64px;
+    left: 6px;
+    width: 82px;
+    height: 62px;
+    border-radius: 46% 46% 22% 22%;
+    clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, #b49565, #7f663e);
+    box-shadow: inset 0 5px 10px rgba(255,255,255,.10);
+  }
+
+  .lamp .bulb {
+    position: absolute;
+    top: 112px;
+    left: 39px;
+    width: 18px;
+    height: 22px;
+    border-radius: 50% 50% 42% 42%;
+    background: #f1c676;
+    box-shadow:
+      0 0 20px rgba(241,173,76,.72),
+      0 0 65px 25px rgba(225,139,58,.16);
+    animation: lamp-breathe 5s ease-in-out infinite;
+  }
+
+  @keyframes lamp-breathe {
+    0%,100% { box-shadow: 0 0 18px rgba(241,173,76,.65), 0 0 58px 22px rgba(225,139,58,.14); }
+    50% { box-shadow: 0 0 23px rgba(241,173,76,.80), 0 0 72px 28px rgba(225,139,58,.18); }
+  }
+
+  .clock-wrap {
+    position: absolute;
+    left: 50%;
+    top: 50.3%;
+    transform: translate(-50%, -50%);
+    z-index: 16;
+    width: var(--clock-w);
+    min-width: 620px;
+    height: var(--clock-h);
+    min-height: 330px;
+  }
+
+  .clock-wrap::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -17px;
+    transform: translateX(-50%);
+    width: 76%;
+    height: 28px;
+    border-radius: 4px 4px 9px 9px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.06), transparent 45%),
+      linear-gradient(90deg, #2b1a12, #60402b 18%, #49301f 55%, #2b1a12);
+    box-shadow: 0 10px 18px rgba(0,0,0,.22);
+  }
+
+  .clock-cabinet {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: clamp(28px, 3.2vh, 38px) clamp(34px, 3.2vw, 58px) clamp(26px, 3vh, 34px);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.055), transparent 11%),
+      repeating-linear-gradient(94deg,
+        rgba(255,255,255,.018) 0 24px,
+        rgba(0,0,0,.025) 25px 28px,
+        transparent 29px 55px
+      ),
+      linear-gradient(135deg, #5b3b29 0%, #3a261b 52%, #2d1e16 100%);
+    border: 1px solid rgba(219,179,111,.13);
+    box-shadow:
+      var(--shadow),
+      inset 0 0 0 2px rgba(255,255,255,.025),
+      inset 0 0 0 10px rgba(22,13,9,.11),
+      inset 0 -20px 35px rgba(0,0,0,.16);
+  }
+
+  .clock-cabinet::before {
+    content: "";
+    position: absolute;
+    inset: 13px;
+    border: 1px solid rgba(201,160,95,.16);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .clock-cabinet::after {
+    content: "";
+    position: absolute;
+    inset: 21px 28px;
+    z-index: 0;
+    border-radius: 3px;
+    box-shadow:
+      inset 0 0 24px rgba(0,0,0,.34),
+      0 1px rgba(255,255,255,.03);
+    pointer-events: none;
+  }
+
+  .cabinet-screw {
+    position: absolute;
+    z-index: 3;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 36% 35%, #d0a762 0 15%, #8a683b 38%, #4f3923 72%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .cabinet-screw.s1 { left: 24px; top: 24px; }
+  .cabinet-screw.s2 { right: 24px; top: 24px; }
+  .cabinet-screw.s3 { left: 24px; bottom: 24px; }
+  .cabinet-screw.s4 { right: 24px; bottom: 24px; }
+
+  .brand-row {
+    position: relative;
+    z-index: 2;
+    height: clamp(26px, 3.4vh, 34px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: #cdb58d;
+    padding: 0 4px;
+    letter-spacing: .19em;
+    text-transform: uppercase;
+    font-size: clamp(9px, .72vw, 12px);
+    font-weight: 650;
+    opacity: .82;
+  }
+
+  .brand-row .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    white-space: nowrap;
+  }
+
+  .brand-row .brand-mark::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    border: 1px solid #b98e52;
+    transform: rotate(45deg);
+    box-shadow: inset 0 0 0 3px rgba(185,142,82,.12);
+  }
+
+  .brand-row .local-note {
+    opacity: .58;
+    letter-spacing: .12em;
+  }
+
+  .time-row {
+    position: relative;
+    z-index: 2;
+    height: calc(var(--card-h) + 10px);
+    display: grid;
+    grid-template-columns: minmax(0,1fr) clamp(22px, 3.2vw, 48px) minmax(0,1fr) clamp(22px, 3.2vw, 48px) minmax(0,.88fr);
+    align-items: center;
+    gap: clamp(5px, .55vw, 10px);
+    transition: grid-template-columns .55s cubic-bezier(.2,.7,.2,1), gap .55s ease;
+  }
+
+  .clock-cabinet.no-seconds .time-row {
+    grid-template-columns: minmax(0,1fr) clamp(24px, 4vw, 56px) minmax(0,1fr);
+    gap: clamp(8px, 1.1vw, 18px);
+  }
+
+  .clock-cabinet.no-seconds .seconds-slot,
+  .clock-cabinet.no-seconds .seconds-sep {
+    display: none;
+  }
+
+  .flip-card {
+    position: relative;
+    width: 100%;
+    height: var(--card-h);
+    perspective: 1500px;
+    filter: drop-shadow(0 15px 14px rgba(0,0,0,.30));
+  }
+
+  .card-body {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: clamp(8px, .75vw, 12px);
+    background:
+      radial-gradient(110% 40% at 50% 0%, rgba(255,255,255,.035), transparent 55%),
+      linear-gradient(180deg, #25241f 0%, #1c1c18 49.6%, #171713 50.4%, #21201b 100%);
+    border: 1px solid rgba(205,190,159,.11);
+    box-shadow:
+      inset 0 1px rgba(255,255,255,.05),
+      inset 0 -1px rgba(0,0,0,.55),
+      inset 0 0 38px rgba(0,0,0,.30);
+  }
+
+  .flip-half,
+  .flip-flap {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    backface-visibility: hidden;
+  }
+
+  .flip-half.top,
+  .flip-flap.top-flap {
+    top: 0;
+    border-radius: clamp(8px, .75vw, 12px) clamp(8px, .75vw, 12px) 2px 2px;
+  }
+
+  .flip-half.bottom,
+  .flip-flap.bottom-flap {
+    bottom: 0;
+    border-radius: 2px 2px clamp(8px, .75vw, 12px) clamp(8px, .75vw, 12px);
+  }
+
+  .flip-half.top {
+    background: linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.05));
+  }
+
+  .flip-half.bottom {
+    background: linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.08));
+  }
+
+  .num {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 200%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ede2cd;
+    font-family:
+      "SF Pro Display", "DIN Alternate", "Bahnschrift",
+      "Segoe UI", system-ui, sans-serif;
+    font-weight: 590;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(76px, 11.1vw, 168px);
+    line-height: var(--card-h);
+    letter-spacing: -.055em;
+    text-indent: -.055em;
+    text-shadow:
+      0 1px 0 rgba(255,255,255,.12),
+      0 3px 14px rgba(0,0,0,.34);
+  }
+
+  .no-seconds .hours-slot .num,
+  .no-seconds .minutes-slot .num {
+    font-size: clamp(88px, 13vw, 192px);
+  }
+
+  .top .num,
+  .top-flap .num { top: 0; }
+
+  .bottom .num,
+  .bottom-flap .num { bottom: 0; }
+
+  .split-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 1px);
+    height: 2px;
+    z-index: 12;
+    background:
+      linear-gradient(90deg,
+        rgba(0,0,0,.68),
+        rgba(0,0,0,.42) 9%,
+        rgba(196,178,145,.08) 50%,
+        rgba(0,0,0,.42) 91%,
+        rgba(0,0,0,.68)
+      );
+    box-shadow:
+      0 -1px rgba(255,255,255,.025),
+      0 2px 3px rgba(0,0,0,.42);
+  }
+
+  .roller {
+    position: absolute;
+    top: calc(50% - 6px);
+    width: 12px;
+    height: 12px;
+    z-index: 14;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #c5a06a 0 13%, #7b603b 40%, #3c2c1c 72%);
+    box-shadow:
+      0 1px 3px rgba(0,0,0,.65),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .roller.left { left: 8px; }
+  .roller.right { right: 8px; }
+
+  .flip-flap {
+    z-index: 11;
+    pointer-events: none;
+    opacity: 0;
+    backface-visibility: hidden;
+    will-change: transform, filter, box-shadow;
+  }
+
+  /* Match the visible final frame to the static card exactly.
+     Motion lighting is supplied only by filter/box-shadow in the keyframes. */
+  .flip-flap.top-flap {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.015), rgba(0,0,0,.05)),
+      radial-gradient(110% 40% at 50% 0%, rgba(255,255,255,.035), transparent 55%),
+      linear-gradient(180deg, #25241f 0%, #1c1c18 99.2%, #171713 100%);
+  }
+
+  .flip-flap.bottom-flap {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.018), rgba(0,0,0,.08)),
+      linear-gradient(180deg, #171713 0%, #21201b 100%);
+  }
+
+  .flip-card.is-flipping .top-flap {
+    opacity: 1;
+    transform-origin: bottom center;
+    animation: fold-top .32s cubic-bezier(.32,.01,.62,.37) forwards;
+  }
+
+  .flip-card.is-flipping .bottom-flap {
+    opacity: 1;
+    transform-origin: top center;
+    transform: rotateX(90deg);
+    animation: unfold-bottom .42s .30s cubic-bezier(.16,.72,.22,1) forwards;
+  }
+
+  @keyframes fold-top {
+    0% {
+      transform: rotateX(0deg);
+      filter: brightness(1);
+      box-shadow: inset 0 0 0 rgba(0,0,0,0);
+    }
+    55% {
+      filter: brightness(.79);
+      box-shadow: inset 0 -18px 28px rgba(0,0,0,.10);
+    }
+    100% {
+      transform: rotateX(-90deg);
+      filter: brightness(.60);
+      box-shadow: inset 0 -28px 36px rgba(0,0,0,.18);
+    }
+  }
+
+  @keyframes unfold-bottom {
+    0% {
+      transform: rotateX(90deg);
+      filter: brightness(.62);
+      box-shadow:
+        inset 0 24px 34px rgba(0,0,0,.20),
+        inset 0 -2px 0 rgba(255,255,255,0);
+    }
+    58% {
+      transform: rotateX(18deg);
+      filter: brightness(.88);
+      box-shadow:
+        inset 0 13px 22px rgba(0,0,0,.10),
+        inset 0 -1px 0 rgba(255,255,255,.01);
+    }
+    78% {
+      transform: rotateX(5deg);
+      filter: brightness(.965);
+      box-shadow:
+        inset 0 6px 10px rgba(0,0,0,.045),
+        inset 0 -1px 0 rgba(255,255,255,.018);
+    }
+    92% {
+      transform: rotateX(.8deg);
+      filter: brightness(.995);
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,.012),
+        inset 0 -1px 0 rgba(255,255,255,.023);
+    }
+    100% {
+      transform: rotateX(0deg);
+      filter: brightness(1);
+      box-shadow:
+        inset 0 0 0 rgba(0,0,0,0),
+        inset 0 0 0 rgba(255,255,255,0);
+    }
+  }
+
+  .separator {
+    position: relative;
+    height: var(--card-h);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(30px, 5vh, 58px);
+    opacity: .86;
+  }
+
+  .separator::before,
+  .separator::after {
+    content: "";
+    width: clamp(10px, 1.2vw, 17px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 30%, #dec08a 0 8%, #a98554 35%, #5a4329 75%);
+    box-shadow:
+      0 4px 8px rgba(0,0,0,.38),
+      0 0 14px rgba(199,145,75,.06);
+  }
+
+  .date-plaque {
+    position: relative;
+    z-index: 2;
+    height: clamp(48px, 6vh, 66px);
+    margin-top: clamp(8px, 1.3vh, 14px);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 18px;
+    overflow: hidden;
+    transition:
+      height .45s cubic-bezier(.2,.7,.2,1),
+      margin .45s ease,
+      opacity .3s ease,
+      transform .45s ease;
+  }
+
+  .date-plaque::before,
+  .date-plaque::after {
+    content: "";
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(202,164,104,.35));
+  }
+  .date-plaque::after {
+    background: linear-gradient(90deg, rgba(202,164,104,.35), transparent);
+  }
+
+  .clock-cabinet.no-date {
+    --card-h: clamp(205px, 27vh, 315px);
+  }
+
+  .clock-cabinet.no-date .date-plaque {
+    height: 0;
+    margin-top: 0;
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+
+  .date-chip {
+    min-width: clamp(250px, 25vw, 380px);
+    height: clamp(36px, 4.5vh, 46px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    border-radius: 999px;
+    color: #d9c6a3;
+    font-size: clamp(12px, 1.05vw, 16px);
+    letter-spacing: .13em;
+    white-space: nowrap;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.08)),
+      rgba(30,21,15,.48);
+    border: 1px solid rgba(194,153,92,.17);
+    box-shadow:
+      inset 0 0 18px rgba(0,0,0,.18),
+      0 4px 10px rgba(0,0,0,.12);
+  }
+
+  .mantel {
+    position: absolute;
+    left: 50%;
+    top: calc(50.3% + var(--clock-h) / 2 + 16px);
+    transform: translateX(-50%);
+    z-index: 12;
+    width: min(84vw, 1220px);
+    height: clamp(34px, 5vh, 54px);
+    border-radius: 4px 4px 7px 7px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.07), transparent 19%),
+      repeating-linear-gradient(93deg,
+        rgba(255,255,255,.02) 0 26px,
+        rgba(0,0,0,.04) 27px 31px,
+        transparent 32px 70px
+      ),
+      linear-gradient(180deg, #523522, #3a2419 60%, #271811);
+    box-shadow:
+      0 15px 28px rgba(0,0,0,.28),
+      inset 0 -8px 12px rgba(0,0,0,.13);
+  }
+
+  .mantel {
+    overflow: visible;
+  }
+
+  .mug {
+    position: absolute;
+    z-index: 3;
+    right: -12px;
+    top: -34px;
+    width: 38px;
+    height: 36px;
+    border-radius: 5px 5px 10px 10px;
+    background: linear-gradient(135deg, #9a8f78, #c5b79a 55%, #82765f);
+    box-shadow:
+      0 6px 12px rgba(0,0,0,.24),
+      0 10px 14px rgba(0,0,0,.10),
+      inset 0 1px rgba(255,255,255,.22);
+  }
+
+  .mug::before {
+    content: "";
+    position: absolute;
+    right: -15px;
+    top: 7px;
+    width: 18px;
+    height: 19px;
+    border: 4px solid #8d8068;
+    border-left: 0;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .mug::after {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: -24px;
+    width: 22px;
+    height: 24px;
+    border-radius: 50%;
+    border-left: 2px solid rgba(230,215,190,.22);
+    transform: rotate(12deg);
+    opacity: .55;
+    animation: steam 3.8s ease-in-out infinite;
+  }
+
+  @keyframes steam {
+    0%,100% { transform: translate(0,7px) rotate(12deg) scale(.88); opacity: 0; }
+    30% { opacity: .48; }
+    65% { transform: translate(3px,-5px) rotate(2deg) scale(1.05); opacity: .22; }
+  }
+
+  .book-stack {
+    position: absolute;
+    z-index: 14;
+    left: max(8vw, calc(50% - 560px));
+    top: calc(50.3% + var(--clock-h) / 2 - 27px);
+    width: 88px;
+    height: 30px;
+  }
+
+  .book-stack::before,
+  .book-stack::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 88px;
+    height: 12px;
+    border-radius: 2px 4px 4px 2px;
+    box-shadow: 0 4px 8px rgba(0,0,0,.22);
+  }
+  .book-stack::before {
+    bottom: 0;
+    background: linear-gradient(90deg, #516258, #33483e);
+  }
+  .book-stack::after {
+    bottom: 13px;
+    left: 10px;
+    width: 74px;
+    background: linear-gradient(90deg, #805342, #56362d);
+  }
+
+  .table-band {
+    position: absolute;
+    z-index: 1;
+    left: 0; right: 0; bottom: 0;
+    height: 16vh;
+    min-height: 90px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.025), transparent 12%),
+      repeating-linear-gradient(92deg,
+        rgba(255,255,255,.012) 0 32px,
+        rgba(0,0,0,.035) 33px 38px,
+        transparent 39px 86px
+      ),
+      linear-gradient(180deg, #2b1c14, #21150f);
+    box-shadow: 0 -12px 28px rgba(0,0,0,.18);
+  }
+
+  .table-band::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 8px;
+    background: linear-gradient(180deg, #5a3a28, #362319);
+    box-shadow: 0 4px 12px rgba(0,0,0,.24);
+  }
+
+  .pine-edge {
+    position: absolute;
+    z-index: 8;
+    bottom: 3vh;
+    width: 18vw;
+    min-width: 180px;
+    height: 31vh;
+    min-height: 220px;
+    pointer-events: none;
+    opacity: .68;
+    filter: drop-shadow(0 12px 12px rgba(0,0,0,.22));
+  }
+
+  .pine-edge.left { left: -4vw; transform: rotate(5deg); }
+  .pine-edge.right { right: -5vw; transform: scaleX(-1) rotate(7deg); }
+
+  .pine-edge::before,
+  .pine-edge::after {
+    content: "";
+    position: absolute;
+    left: 36%;
+    bottom: 0;
+    width: 36%;
+    height: 100%;
+    background: linear-gradient(180deg, #39574a, #1b3028);
+    clip-path: polygon(
+      50% 0,
+      62% 16%, 55% 16%, 75% 31%, 61% 30%,
+      86% 49%, 66% 46%, 100% 71%, 68% 64%,
+      93% 89%, 60% 78%, 58% 100%, 42% 100%,
+      42% 79%, 8% 91%, 34% 64%, 0 72%, 34% 46%,
+      13% 50%, 39% 30%, 24% 31%, 45% 16%, 37% 16%
+    );
+  }
+
+  .pine-edge::after {
+    left: 4%;
+    bottom: -8%;
+    height: 72%;
+    transform: rotate(-9deg);
+    opacity: .74;
+  }
+
+  .key-hint {
+    position: absolute;
+    right: clamp(18px, 2.5vw, 40px);
+    bottom: clamp(14px, 2.1vh, 25px);
+    z-index: 22;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    color: rgba(222,207,181,.52);
+    font-size: clamp(10px, .75vw, 12px);
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .key-hint .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .key-hint kbd {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid rgba(210,186,144,.18);
+    background: rgba(24,18,14,.38);
+    box-shadow: inset 0 -2px rgba(0,0,0,.18);
+    color: rgba(232,217,191,.68);
+    font: inherit;
+    letter-spacing: 0;
+  }
+
+  .tiny-status {
+    position: absolute;
+    left: clamp(18px, 2.5vw, 40px);
+    bottom: clamp(16px, 2.2vh, 27px);
+    z-index: 22;
+    color: rgba(221,205,176,.42);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(9px, .66vw, 11px);
+    letter-spacing: .07em;
+    pointer-events: none;
+  }
+
+  .ambient-glow {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(42% 45% at 82% 38%, var(--ambient), transparent 72%),
+      radial-gradient(40% 42% at 20% 32%, rgba(195,158,102,.08), transparent 76%);
+    transition: background .9s ease;
+  }
+
+  @media (max-aspect-ratio: 4/3) {
+    :root {
+      --clock-w: min(90vw, 980px);
+      --clock-h: clamp(330px, 40vh, 450px);
+    }
+    .window {
+      left: 3vw;
+      width: 28vw;
+      opacity: .78;
+    }
+    .lamp { right: 4vw; opacity: .72; }
+    .mug, .book-stack { opacity: .8; }
+  }
+
+  @media (max-width: 820px) {
+    :root {
+      --clock-w: 94vw;
+      --clock-h: clamp(315px, 43vh, 400px);
+      --card-h: clamp(170px, 24vh, 230px);
+    }
+
+    .top-beam { height: 58px; }
+    .window {
+      left: 1.5vw;
+      top: 10vh;
+      width: 38vw;
+      height: 43vh;
+      opacity: .50;
+    }
+    .lamp { display: none; }
+    .clock-wrap {
+      min-width: 0;
+      top: 49%;
+    }
+    .clock-cabinet {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .time-row {
+      grid-template-columns: minmax(0,1fr) 18px minmax(0,1fr) 18px minmax(0,.88fr);
+      gap: 3px;
+    }
+    .separator { gap: 28px; }
+    .date-chip { min-width: 0; padding: 0 18px; }
+    .brand-row .local-note { display: none; }
+    .mug, .book-stack { display: none; }
+    .mantel { width: 96vw; }
+    .pine-edge { opacity: .42; }
+    .key-hint {
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      bottom: 12px;
+      gap: 10px;
+    }
+    .tiny-status { display: none; }
+  }
+
+  @media (max-width: 540px) {
+    :root {
+      --clock-h: 370px;
+      --card-h: 190px;
+    }
+    .clock-wrap { top: 48%; }
+    .clock-cabinet { padding: 28px 13px 20px; }
+    .brand-row { padding: 0 8px; }
+    .num { font-size: clamp(60px, 20vw, 88px); }
+    .no-seconds .hours-slot .num,
+    .no-seconds .minutes-slot .num { font-size: clamp(72px, 23vw, 105px); }
+    .separator::before, .separator::after { width: 9px; }
+    .date-chip {
+      font-size: 11px;
+      letter-spacing: .08em;
+      padding: 0 12px;
+    }
+    .date-plaque { gap: 8px; }
+    .key-hint .fullscreen-hint { display: none; }
+  }
+
+  @media (max-height: 650px) {
+    :root {
+      --clock-h: min(55vh, 355px);
+      --card-h: min(31vh, 205px);
+    }
+    .clock-wrap { top: 49%; }
+    .mantel { top: calc(49% + var(--clock-h) / 2 + 10px); }
+    .mug, .book-stack { display: none; }
+    .window { top: 10vh; height: 50vh; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: .001ms !important;
+    }
+    .flip-card.is-flipping .top-flap,
+    .flip-card.is-flipping .bottom-flap { opacity: 0; }
+  }
+</style>
+</head>
+
+<body>
+<div id="root" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const ROOT = document.getElementById("root");
+  const PREF_KEY = "forest-cabin-clock:v1";
+  const state = {
+    showSeconds: true,
+    showDate: true,
+    disposed: false,
+    timers: new Set(),
+    intervals: new Set(),
+    cards: {}
+  };
+
+  function readPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem(PREF_KEY) || "{}");
+      if (typeof p.showSeconds === "boolean") state.showSeconds = p.showSeconds;
+      if (typeof p.showDate === "boolean") state.showDate = p.showDate;
+    } catch (_) {}
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify({
+        showSeconds: state.showSeconds,
+        showDate: state.showDate
+      }));
+    } catch (_) {}
+  }
+
+  function pad2(v) { return String(v).padStart(2, "0"); }
+
+  function phaseFor(hour) {
+    if (hour >= 5 && hour < 9) return "dawn";
+    if (hour >= 9 && hour < 17) return "day";
+    if (hour >= 17 && hour < 20) return "dusk";
+    return "night";
+  }
+
+  function phaseText(phase) {
+    return {
+      dawn: "晨光入林",
+      day: "林昼安静",
+      dusk: "暮色归木",
+      night: "夜林微灯"
+    }[phase] || "林居时刻";
+  }
+
+  function formatDate(d) {
+    const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "long" }).format(d);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 · ${weekday}`;
+  }
+
+  function cardMarkup(slot, label) {
+    return `
+      <div class="flip-card ${slot}-slot" data-card="${slot}" aria-label="${label}">
+        <div class="card-body">
+          <div class="flip-half top"><span class="num static-top">00</span></div>
+          <div class="flip-half bottom"><span class="num static-bottom">00</span></div>
+          <div class="flip-flap top-flap"><span class="num flap-old">00</span></div>
+          <div class="flip-flap bottom-flap"><span class="num flap-new">00</span></div>
+          <div class="split-line"></div>
+          <span class="roller left"></span>
+          <span class="roller right"></span>
+        </div>
+      </div>`;
+  }
+
+  function sceneMarkup() {
+    return `
+      <section class="cabin phase-dawn" role="application" aria-label="林间小屋翻页时钟">
+        <div class="ambient-glow"></div>
+        <div class="top-beam"></div>
+        <div class="side-beam left"></div>
+        <div class="side-beam right"></div>
+
+        <div class="window" aria-hidden="true">
+          <div class="window-sky">
+            <div class="sun-moon"></div>
+            <div class="forest-layer far"></div>
+            <div class="forest-layer mid"></div>
+            <div class="forest-floor"></div>
+          </div>
+          <div class="window-cross-v"></div>
+          <div class="window-cross-h"></div>
+          <div class="curtain"></div>
+        </div>
+
+        <div class="lamp" aria-hidden="true">
+          <div class="arm"></div>
+          <div class="shade"></div>
+          <div class="bulb"></div>
+        </div>
+
+        <div class="clock-wrap">
+          <div class="clock-cabinet">
+            <span class="cabinet-screw s1"></span>
+            <span class="cabinet-screw s2"></span>
+            <span class="cabinet-screw s3"></span>
+            <span class="cabinet-screw s4"></span>
+
+            <div class="brand-row">
+              <span class="brand-mark">Wildwood Cabin / No. 07</span>
+              <span class="local-note">Local cabin time</span>
+            </div>
+
+            <div class="time-row">
+              ${cardMarkup("hours", "小时")}
+              <div class="separator hours-sep" aria-hidden="true"></div>
+              ${cardMarkup("minutes", "分钟")}
+              <div class="separator seconds-sep" aria-hidden="true"></div>
+              ${cardMarkup("seconds", "秒")}
+            </div>
+
+            <div class="date-plaque">
+              <div class="date-chip" data-date>日期</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mantel" aria-hidden="true"><div class="mug"></div></div>
+        <div class="book-stack" aria-hidden="true"></div>
+        <div class="table-band" aria-hidden="true"></div>
+        <div class="pine-edge left" aria-hidden="true"></div>
+        <div class="pine-edge right" aria-hidden="true"></div>
+
+        <div class="tiny-status" data-status>—</div>
+        <div class="key-hint" aria-hidden="true">
+          <span class="key"><kbd>S</kbd> 秒</span>
+          <span class="key"><kbd>D</kbd> 日期</span>
+          <span class="key fullscreen-hint"><kbd>F</kbd> 全屏</span>
+        </div>
+
+        <div class="wood-grain"></div>
+        <div class="vignette"></div>
+        <div class="grain"></div>
+      </section>`;
+  }
+
+  function schedule(fn, ms) {
+    const id = setTimeout(() => {
+      state.timers.delete(id);
+      if (!state.disposed) fn();
+    }, ms);
+    state.timers.add(id);
+    return id;
+  }
+
+  function updateFlipCard(card, value, instant = false) {
+    if (!card) return;
+    const top = card.querySelector(".static-top");
+    const bottom = card.querySelector(".static-bottom");
+    const oldFlap = card.querySelector(".flap-old");
+    const newFlap = card.querySelector(".flap-new");
+    const previous = card.dataset.value || value;
+
+    if (instant || previous === value) {
+      top.textContent = value;
+      bottom.textContent = value;
+      oldFlap.textContent = value;
+      newFlap.textContent = value;
+      card.dataset.value = value;
+      return;
+    }
+
+    card.classList.remove("is-flipping");
+    void card.offsetWidth;
+
+    top.textContent = value;
+    bottom.textContent = previous;
+    oldFlap.textContent = previous;
+    newFlap.textContent = value;
+    card.dataset.value = value;
+    card.classList.add("is-flipping");
+
+    schedule(() => { bottom.textContent = value; }, 310);
+    schedule(() => {
+      card.classList.remove("is-flipping");
+      bottom.textContent = value;
+      oldFlap.textContent = value;
+      newFlap.textContent = value;
+    }, 760);
+  }
+
+  function mountClockUI(host) {
+    state.disposed = false;
+    readPrefs();
+    host.innerHTML = sceneMarkup();
+
+    const cabin = host.querySelector(".cabin");
+    const cabinet = host.querySelector(".clock-cabinet");
+    const dateNode = host.querySelector("[data-date]");
+    const statusNode = host.querySelector("[data-status]");
+    const cards = {
+      hours: host.querySelector('[data-card="hours"]'),
+      minutes: host.querySelector('[data-card="minutes"]'),
+      seconds: host.querySelector('[data-card="seconds"]')
+    };
+    state.cards = cards;
+
+    function applyPrefs() {
+      cabinet.classList.toggle("no-seconds", !state.showSeconds);
+      cabinet.classList.toggle("no-date", !state.showDate);
+      savePrefs();
+      statusNode.textContent =
+        `${state.showSeconds ? "秒 ON" : "秒 OFF"} · ${state.showDate ? "日期 ON" : "日期 OFF"}`;
+    }
+
+    let first = true;
+    let lastPhase = "";
+
+    function tick() {
+      const now = new Date();
+      const phase = phaseFor(now.getHours());
+      if (phase !== lastPhase) {
+        cabin.classList.remove("phase-dawn", "phase-day", "phase-dusk", "phase-night");
+        cabin.classList.add(`phase-${phase}`);
+        statusNode.dataset.phase = phase;
+        lastPhase = phase;
+      }
+
+      updateFlipCard(cards.hours, pad2(now.getHours()), first);
+      updateFlipCard(cards.minutes, pad2(now.getMinutes()), first);
+      if (state.showSeconds || first) updateFlipCard(cards.seconds, pad2(now.getSeconds()), first);
+
+      if (state.showDate) dateNode.textContent = formatDate(now);
+      statusNode.textContent =
+        `${phaseText(phase)} · ${state.showSeconds ? "秒 ON" : "秒 OFF"} · ${state.showDate ? "日期 ON" : "日期 OFF"}`;
+
+      document.title = `${pad2(now.getHours())}:${pad2(now.getMinutes())}${state.showSeconds ? ":" + pad2(now.getSeconds()) : ""} · 林间小屋`;
+      first = false;
+    }
+
+    function toggleSeconds() {
+      state.showSeconds = !state.showSeconds;
+      applyPrefs();
+      if (state.showSeconds) updateFlipCard(cards.seconds, pad2(new Date().getSeconds()), true);
+    }
+
+    function toggleDate() {
+      state.showDate = !state.showDate;
+      applyPrefs();
+      if (state.showDate) dateNode.textContent = formatDate(new Date());
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      } catch (_) {}
+    }
+
+    function onKey(e) {
+      if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "s") toggleSeconds();
+      else if (k === "d") toggleDate();
+      else if (k === "f") toggleFullscreen();
+    }
+
+    window.addEventListener("keydown", onKey);
+    applyPrefs();
+    tick();
+
+    const interval = setInterval(tick, 250);
+    state.intervals.add(interval);
+
+    return () => {
+      state.disposed = true;
+      window.removeEventListener("keydown", onKey);
+      state.intervals.forEach(clearInterval);
+      state.timers.forEach(clearTimeout);
+      state.intervals.clear();
+      state.timers.clear();
+    };
+  }
+
+  // Immediate zero-dependency mount so the HTML stays useful even without network access.
+  window.__cabinCleanup = mountClockUI(ROOT);
+
+  // Progressive React 18 enhancement. The visual/interaction engine above remains identical.
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.crossOrigin = "anonymous";
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function upgradeToReact18() {
+    try {
+      await loadScript("https://unpkg.com/react@18.3.1/umd/react.production.min.js");
+      await loadScript("https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js");
+      if (!window.React || !window.ReactDOM || !window.ReactDOM.createRoot) return;
+
+      if (typeof window.__cabinCleanup === "function") window.__cabinCleanup();
+      ROOT.innerHTML = "";
+
+      const React = window.React;
+      const h = React.createElement;
+
+      function CabinClockApp() {
+        const hostRef = React.useRef(null);
+        React.useEffect(() => {
+          if (!hostRef.current) return undefined;
+          const cleanup = mountClockUI(hostRef.current);
+          window.__cabinCleanup = cleanup;
+          return cleanup;
+        }, []);
+        return h("div", { ref: hostRef, className: "react-host" });
+      }
+
+      window.__cabinReactRoot = window.ReactDOM.createRoot(ROOT);
+      window.__cabinReactRoot.render(h(CabinClockApp));
+    } catch (_) {
+      // Intentionally silent: the embedded fallback is already fully functional.
+    }
+  }
+
+  // Delay the enhancement so local/offline opening paints immediately.
+  schedule(upgradeToReact18, 1200);
+})();
+</script>
+
+<!--
+TypeScript authoring note (the browser executes the equivalent precompiled JS above):
+
+type ClockPrefs = {
+  showSeconds: boolean;
+  showDate: boolean;
+};
+
+declare global {
+  interface Window {
+    __cabinCleanup?: () => void;
+    __cabinReactRoot?: import("react-dom/client").Root;
+  }
+}
+
+const CabinClockApp: React.FC = () => {
+  const hostRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!hostRef.current) return;
+    const cleanup: () => void = mountClockUI(hostRef.current);
+    window.__cabinCleanup = cleanup;
+    return cleanup;
+  }, []);
+
+  return <div ref={hostRef} className="react-host" />;
+};
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<CabinClockApp />);
+-->
+</body>
+</html>

@@ -558,6 +558,451 @@
     -0.012em -0.012em 0.018em rgba(255, 255, 255, 0.9);
 }
 
+/* ==================== 软糖捏捏 ==================== */
+/* 女生向亮色:樱花牛奶底 + 三段果冻渐变卡 + 糖衣高光 + 糖浆波浪边 + 奶黄铆钉 +
+   果冻缓动翻页 + 落地 duang 回弹 + 闲置呼吸 + 糖果冒号 */
+[data-theme="gummy"] {
+  --bg-from: #fff1f5;
+  --bg-via: #fff6f9;
+  --bg-to: #ffe9f2;
+  --bg-glow-1: rgba(255, 143, 171, 0.1);
+  --bg-glow-2: rgba(255, 216, 77, 0.06);
+  --card-from: #ffb7c9;
+  --card-to: #ff7ba2;
+  --card-top-shine: rgba(255, 255, 255, 0.5);
+  --card-bottom-shade: rgba(214, 51, 108, 0.18);
+  --divider: rgba(214, 51, 108, 0.2);
+  --seam: #d6336c;
+  --digit: #ffffff;
+  --digit-shadow: rgba(214, 51, 108, 0.4);
+  --accent: #d6336c;
+  --accent-with-bg: #d6336c;
+  --accent-soft: rgba(255, 143, 171, 0.18);
+  --text-primary: #a64b6e;
+  --text-secondary: #c25e85;
+  --text-muted: #d08fa8;
+  --panel-bg: rgba(255, 246, 249, 0.9);
+  --panel-border: rgba(214, 51, 108, 0.22);
+  --noise-opacity: 0;
+  --badge-text: #8c5a00;
+  --badge-bg: #ffd84d;
+  --badge-border: transparent;
+}
+
+/* 软糖专属:全局 UI 用 Nunito(圆体,与 Baloo 2 同族气质) */
+[data-theme="gummy"] body {
+  font-family: "Nunito", "Noto Sans SC", sans-serif;
+}
+
+/* 软糖专属:数字 Baloo 2 ExtraBold(圆胖软糖,内馅逼近撑满卡面) */
+[data-theme="gummy"] .flip-unit,
+[data-theme="gummy"] .flip-static__digit,
+[data-theme="gummy"] .flip-leaf__digit {
+  font-family: "Baloo 2", "ZCOOL KuaiLe", "Anton", sans-serif !important;
+  font-weight: 800;
+}
+
+/* 软糖专属:数字刻字感——白字陷进软糖,只有向下的硬压影 */
+[data-theme="gummy"] .flip-static__digit,
+[data-theme="gummy"] .flip-leaf__digit {
+  text-shadow: 0 0.022em 0 rgba(214, 51, 108, 0.4);
+}
+
+/* 软糖专属:不对称大圆角(左上/右下更圆,4px 圆角差 = 手捏感)+
+   三段果冻渐变 + 顶部糖衣弧形高光 + 透光内描边。
+   外投影只由静态下半卡恒定提供(翻片带外影会在落定卸载时骤减,clay 教训) */
+[data-theme="gummy"] .flip-static--top,
+[data-theme="gummy"] .flip-leaf__face--front {
+  border-radius: 0.17em 0.15em 0 0;
+  background:
+    radial-gradient(120% 85% at 50% -18%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, #ffb7c9 0%, #ff8fab 55%, #ff7ba2 100%);
+  box-shadow: inset 0 0 0 0.02em rgba(255, 255, 255, 0.5);
+}
+[data-theme="gummy"] .flip-static--bottom {
+  border-radius: 0 0 0.17em 0.15em;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 10' preserveAspectRatio='none'%3E%3Cpath d='M0 10 V4.5 Q1.75 1.2 3.5 4.5 T7 4.5 V10 Z' fill='%23FF8FAB' fill-opacity='0.9'/%3E%3C/svg%3E") left bottom / 0.16em 0.1em repeat-x,
+    linear-gradient(180deg, #ffb7c9 0%, #ff8fab 55%, #ff7ba2 100%);
+  box-shadow:
+    inset 0 0 0 0.02em rgba(255, 255, 255, 0.5),
+    0 0.05em 0.11em rgba(255, 123, 162, 0.4);
+}
+[data-theme="gummy"] .flip-leaf__face--back {
+  border-radius: 0 0 0.17em 0.15em;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 10' preserveAspectRatio='none'%3E%3Cpath d='M0 10 V4.5 Q1.75 1.2 3.5 4.5 T7 4.5 V10 Z' fill='%23FF8FAB' fill-opacity='0.9'/%3E%3C/svg%3E") left bottom / 0.16em 0.1em repeat-x,
+    linear-gradient(180deg, #ffb7c9 0%, #ff8fab 55%, #ff7ba2 100%);
+  box-shadow: inset 0 0 0 0.02em rgba(255, 255, 255, 0.5);
+}
+
+/* 软糖专属:糖果纸封口中缝 + 两端奶黄铆钉(::before 平时闲置,主题专用) */
+[data-theme="gummy"] .flip-unit::after {
+  height: 0.022em;
+  background: #d6336c;
+}
+[data-theme="gummy"] .flip-unit::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 0.075em;
+  transform: translateY(-50%);
+  z-index: 16;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, #ffd84d 0 46%, rgba(255, 216, 77, 0) 56%) left center / 0.075em 0.075em no-repeat,
+    radial-gradient(circle, #ffd84d 0 46%, rgba(255, 216, 77, 0) 56%) right center / 0.075em 0.075em no-repeat;
+}
+
+/* 软糖专属:翻页果冻缓动(过冲回弹,rotateX 冲过 180° 再收回) */
+[data-theme="gummy"] .flip-leaf.is-flipping {
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 软糖专属:闲置呼吸(每卡错相 0.5s,周期 3s)+ 落地 duang 回弹(底边锚定)。
+   错相经 --breathe-delay 变量注入,避免高优先级 delay 规则压过 is-bouncing 的速记重置 */
+[data-theme="gummy"] .flip-unit {
+  transform-origin: 50% 100%;
+  animation: gummy-breathe 3s ease-in-out infinite;
+  animation-delay: var(--breathe-delay, 0s);
+}
+[data-theme="gummy"] .clock-stage > :nth-child(1) .flip-unit:nth-child(2) { --breathe-delay: 0.5s; }
+[data-theme="gummy"] .clock-stage > :nth-child(3) .flip-unit:nth-child(1) { --breathe-delay: 1s; }
+[data-theme="gummy"] .clock-stage > :nth-child(3) .flip-unit:nth-child(2) { --breathe-delay: 1.5s; }
+[data-theme="gummy"] .clock-stage > :nth-child(5) .flip-unit:nth-child(1) { --breathe-delay: 2s; }
+[data-theme="gummy"] .clock-stage > :nth-child(5) .flip-unit:nth-child(2) { --breathe-delay: 2.5s; }
+[data-theme="gummy"] .flip-unit.is-bouncing {
+  animation: gummy-duang 0.35s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+@keyframes gummy-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.02em); }
+}
+@keyframes gummy-duang {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale(1.035, 1.06); }
+  70% { transform: scale(0.985, 0.965); }
+  100% { transform: scale(1, 1); }
+}
+
+/* 软糖专属:糖果冒号(两颗上下交替跳动的圆点,替代组间留白) */
+.gummy-colon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.16em;
+  align-self: center;
+  margin: 0 0.02em;
+}
+.gummy-colon i {
+  width: 0.105em;
+  height: 0.105em;
+  border-radius: 50%;
+  background: #ff7ba2;
+  box-shadow: 0 0.015em 0.03em rgba(214, 51, 108, 0.3);
+  animation: gummy-colon-dot 1s ease-in-out infinite;
+}
+.gummy-colon i:last-child {
+  animation-delay: 0.5s;
+}
+@keyframes gummy-colon-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.72); }
+}
+
+/* 软糖专属:日期行 Nunito + 糖果徽章(药丸底 + 两端褶皱包装) */
+[data-theme="gummy"] .info-row {
+  font-family: "Nunito", "Noto Sans SC", sans-serif !important;
+}
+[data-theme="gummy"] .info-badge {
+  position: relative;
+  font-family: "Baloo 2", "Nunito", sans-serif;
+  font-weight: 700;
+  border-radius: 999px;
+}
+[data-theme="gummy"] .info-badge::before,
+[data-theme="gummy"] .info-badge::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 0.42em;
+  background: repeating-linear-gradient(180deg, #ffd84d 0 2px, #f0bd35 2px 4px);
+}
+[data-theme="gummy"] .info-badge::before {
+  left: -0.36em;
+  clip-path: polygon(100% 0, 100% 100%, 0 50%);
+}
+[data-theme="gummy"] .info-badge::after {
+  right: -0.36em;
+  clip-path: polygon(0 0, 0 100%, 100% 50%);
+}
+
+/* ==================== 林间小屋 ==================== */
+/* 森系治愈:亚麻奶白底 + 叶隙光斑 + 浅橡木挂牌卡(手绘木纹 + 挂牌孔麻绳 + 底部探叶) +
+   鼠尾草绿手写数字 + 暖橙徽章唯一跳色 + 慢翻页落地摇晃 + 叶片冒号 + 治愈小句子 */
+[data-theme="sill"] {
+  --bg-from: #f1eee2;
+  --bg-via: #f7f4ec;
+  --bg-to: #eae7d9;
+  --page-bg: linear-gradient(180deg, #f7f4ec 0%, #f1eee2 55%, #eae7d9 100%);
+  --bg-glow-1: rgba(232, 168, 124, 0.08);
+  --bg-glow-2: rgba(143, 168, 126, 0.06);
+  --card-from: #ecdabd;
+  --card-to: #d6be97;
+  --card-top-shine: rgba(255, 255, 255, 0.4);
+  --card-bottom-shade: rgba(140, 110, 70, 0.18);
+  --divider: rgba(168, 147, 119, 0.3);
+  --seam: #a89377;
+  --digit: #5c6e50;
+  --digit-shadow: rgba(58, 44, 24, 0.5);
+  --accent: #e8a87c;
+  --accent-with-bg: #c9855a;
+  --accent-soft: rgba(232, 168, 124, 0.18);
+  --text-primary: #7a7263;
+  --text-secondary: #9c9484;
+  --text-muted: #a89e8a;
+  --panel-bg: rgba(247, 244, 236, 0.92);
+  --panel-border: rgba(140, 110, 70, 0.22);
+  --noise-opacity: 0;
+  --badge-text: #fdf9ef;
+  --badge-bg: #e8a87c;
+  --badge-border: transparent;
+}
+
+/* 林间专属:全局 UI 用 Ma Shan Zheng(中文手写,治愈系桌搭感) */
+[data-theme="sill"] body {
+  font-family: "Ma Shan Zheng", "Nunito", "Noto Sans SC", sans-serif;
+}
+
+/* 林间专属:数字 Alfa Slab One(粗方衬线,烙铁印出的数字) */
+[data-theme="sill"] .flip-unit,
+[data-theme="sill"] .flip-static__digit,
+[data-theme="sill"] .flip-leaf__digit {
+  font-family: "Alfa Slab One", "Ma Shan Zheng", "Anton", sans-serif !important;
+}
+
+/* 林间专属:烙印质感——深绿烙色,下方暗影(凹槽深度)+ 上方亮棱(凹槽下壁受光),
+  数字像烙铁烫进软木里 */
+[data-theme="sill"] .flip-static__digit,
+[data-theme="sill"] .flip-leaf__digit {
+  text-shadow:
+    0 0.014em 0.02em rgba(58, 44, 24, 0.5),
+    0 -0.007em 0 rgba(255, 252, 240, 0.4);
+}
+
+/* 林间专属:数字"手工烙上去"——每张卡硬编码微偏移 + ±0.5° 微旋转(手工烙印的
+  细微偏差,布局稳定可复现) */
+[data-theme="sill"] .flip-unit .flip-static__digit,
+[data-theme="sill"] .flip-unit .flip-leaf__digit {
+  transform: translate(var(--jit-x, 0), var(--jit-y, 0)) rotate(var(--jit-r, 0deg));
+}
+[data-theme="sill"] .clock-stage > :nth-child(1) .flip-unit:nth-child(1) { --jit-x: 0.004em; --jit-y: 0.005em; --jit-r: 0.5deg; }
+[data-theme="sill"] .clock-stage > :nth-child(1) .flip-unit:nth-child(2) { --jit-x: -0.005em; --jit-y: -0.003em; --jit-r: -0.4deg; }
+[data-theme="sill"] .clock-stage > :nth-child(3) .flip-unit:nth-child(1) { --jit-x: 0.004em; --jit-y: -0.004em; --jit-r: 0.55deg; }
+[data-theme="sill"] .clock-stage > :nth-child(3) .flip-unit:nth-child(2) { --jit-x: -0.003em; --jit-y: 0.005em; --jit-r: -0.5deg; }
+[data-theme="sill"] .clock-stage > :nth-child(5) .flip-unit:nth-child(1) { --jit-x: 0.005em; --jit-y: 0.003em; --jit-r: 0.35deg; }
+[data-theme="sill"] .clock-stage > :nth-child(5) .flip-unit:nth-child(2) { --jit-x: -0.004em; --jit-y: -0.005em; --jit-r: -0.55deg; }
+
+/* 林间专属:木牌卡——真实木纹用 feTurbulence 分形噪声程序化生成(各向异性频率:
+   x 快 y 慢 = 沿纤维方向拉长的竖直纹理,分形叠加自带疏密与"木结"般的不规则),
+   叠在受光渐变上;底部端面(深木色侧面 + 年轮竖纹,一眼看出板厚)+
+   棱线受光(顶/左亮、右暗)+ 嵌槽阴影(见下) */
+[data-theme="sill"] .flip-static--top,
+[data-theme="sill"] .flip-leaf__face--front {
+  border-radius: 0.045em 0.03em 0 0 / 0.03em 0.045em 0 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
+}
+/* 翻片正面:只带自身棱光,不带槽(翻片在槽内翻动,槽属于衬板侧) */
+[data-theme="sill"] .flip-leaf__face--front {
+  box-shadow:
+    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.45),
+    inset 0.022em 0 0.03em rgba(255, 255, 255, 0.3),
+    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
+}
+/* 嵌槽:小牌不是"贴/浮"在衬板上,而是嵌进衬板开出的凹槽里——
+   槽轮廓线(微柔边的 0 扩散环,随卡圆角)+ 紧贴的内壁阴影(偏移极小,包围式),
+   取代原来的浮起式大偏移投影 */
+[data-theme="sill"] .flip-static--top,
+[data-theme="sill"] .flip-static--bottom {
+  box-shadow:
+    0 0 0.004em 0.014em rgba(88, 64, 36, 0.5),
+    0 0.012em 0.03em rgba(88, 64, 36, 0.38),
+    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.3),
+    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
+}
+[data-theme="sill"] .flip-static--bottom {
+  border-radius: 0 0 0.05em 0.035em / 0 0 0.035em 0.05em;
+  background:
+    repeating-linear-gradient(90deg, rgba(122, 96, 60, 0.35) 0 0.01em, transparent 0.01em 0.032em) left bottom / 100% 0.045em no-repeat,
+    linear-gradient(180deg, #c9ab7e 0%, #aa8c60 100%) left bottom / 100% 0.045em no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
+}
+/* 下半卡槽底稍重(光从上,槽底积影) */
+[data-theme="sill"] .flip-static--bottom {
+  box-shadow:
+    0 0 0.004em 0.014em rgba(88, 64, 36, 0.5),
+    0 0.014em 0.038em rgba(88, 64, 36, 0.46),
+    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.25),
+    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
+}
+[data-theme="sill"] .flip-leaf__face--back {
+  border-radius: 0 0 0.05em 0.035em / 0 0 0.035em 0.05em;
+  background:
+    repeating-linear-gradient(90deg, rgba(122, 96, 60, 0.35) 0 0.01em, transparent 0.01em 0.032em) left bottom / 100% 0.045em no-repeat,
+    linear-gradient(180deg, #c9ab7e 0%, #aa8c60 100%) left bottom / 100% 0.045em no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
+  box-shadow:
+    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.25),
+    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
+}
+
+/* 林间专属:小牌用一颗铜平头钉钉在衬板上(卡顶棱中央,球面高光钉帽 + 一字槽),
+   底部探叶保留——根在卡后被卡面盖住,叶尖伸出卡底,像衬板前长出来的 */
+[data-theme="sill"] .flip-unit::before {
+  content: "";
+  position: absolute;
+  inset: -0.05em 0 -0.09em 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 42% 36%, #eccf96 0 14%, #a67c44 50%, #71522a 76%, rgba(113, 82, 42, 0) 82%) top 0.005em center / 0.068em 0.068em no-repeat,
+    linear-gradient(63deg, transparent 45%, rgba(80, 58, 28, 0.85) 48%, rgba(80, 58, 28, 0.85) 52%, transparent 55%) top 0.005em center / 0.068em 0.068em no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath d='M15 11 Q16 4 8 1 Q1 3 4 9 Q9 13 15 11 Z' fill='%237C9670'/%3E%3Cpath d='M13 9 Q9 5 5 3' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='0.7'/%3E%3C/svg%3E") right 12% bottom 0.02em / 0.085em 0.065em no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14'%3E%3Cpath d='M1 13 Q0 5 9 1 Q17 4 13 10 Q8 14 1 13 Z' fill='%238FA87E'/%3E%3Cpath d='M3 11 Q8 6 12 3' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='0.7'/%3E%3C/svg%3E") left 14% bottom 0.015em / 0.105em 0.075em no-repeat;
+}
+
+/* 林间专属:翻页物理——重力驱动的自由翻转:慢起(被释放)→ 持续加速下落 →
+   撞到挡块戛然而止(forwards 截断,无缓出收尾);0.55s 为真实 split-flap 量级。
+   落定撞击瞬间(FlipCard 落定 timer 经 ref 直控挂 class)牌子被震,重力衰减摆
+   (平缓参数见下方 keyframes);仅分/时组触发——秒组每秒撞一次+动画重启的
+   角度跳变会"一抽一抽的"(FlipCard 的 sway prop 控制) */
+[data-theme="sill"] .flip-leaf.is-flipping {
+  animation: leaf-flip 0.55s cubic-bezier(0.42, 0, 0.9, 0.62) forwards;
+}
+[data-theme="sill"] .flip-unit {
+  transform-origin: 50% 0;
+}
+[data-theme="sill"] .flip-unit.is-bouncing {
+  animation: sill-sway 3s ease-in-out;
+}
+/* 轻碰后的柔性慢衰减摆:慢起手(0.51s 缓升至峰,起手速度仅为"拍飞式"的
+   ~22%)+ 每摆仅 ×0.74 的缓降(1.1°→0.81°→0.6°→0.44°→0.33°,5 个来回)
+   + 3s 长尾;摆动周期 ~1s 恒定(单摆),各段 ease-in-out = 正弦摆动。
+   幅度校准:峰值 1.1° ≈ 绕顶边 4.6px 摆幅(0.5° 仅 2px,肉眼不可见)。
+   秒牌不触发(Home 秒组传 sway=false)——每秒重启的截断读感"一抽一抽",
+   摇晃只留给分/时组的整分时刻完整播完 */
+@keyframes sill-sway {
+  0% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.35, 0.4, 0.5, 1); }
+  17% { transform: rotate(1.1deg); animation-timing-function: ease-in-out; }
+  33% { transform: rotate(-0.81deg); animation-timing-function: ease-in-out; }
+  50% { transform: rotate(0.6deg); animation-timing-function: ease-in-out; }
+  67% { transform: rotate(-0.44deg); animation-timing-function: ease-in-out; }
+  83% { transform: rotate(0.33deg); animation-timing-function: ease-in-out; }
+  100% { transform: rotate(0deg); }
+}
+
+/* 林间专属:木牌拼接缝——原木深一阶横线(两端渐隐,接缝收尾),两端木销钉暗点 */
+[data-theme="sill"] .flip-unit::after {
+  height: 0.05em;
+  background:
+    radial-gradient(circle, #6e5738 0 42%, rgba(110, 87, 56, 0) 62%) left center / 0.04em 0.04em no-repeat,
+    radial-gradient(circle, #6e5738 0 42%, rgba(110, 87, 56, 0) 62%) right center / 0.04em 0.04em no-repeat,
+    linear-gradient(90deg, transparent 0 2%, rgba(140, 112, 74, 0.55) 5% 95%, transparent 98%) center / 100% 0.014em no-repeat;
+}
+
+/* 林间专属:叶隙阳光光斑——3 个大而极淡的圆形缓慢漂移(约 30s 周期)。
+   radial-gradient 自柔光,只动画 transform(GPU 合成,零 layout/paint 开销) */
+.sill-spots {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.sill-spots i {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 249, 227, 0.6) 0%, rgba(255, 249, 227, 0) 68%);
+  will-change: transform;
+}
+.sill-spots i:nth-child(1) { width: 44vmax; height: 44vmax; left: 6%; top: 2%; animation: sill-spot-a 32s ease-in-out infinite; }
+.sill-spots i:nth-child(2) { width: 36vmax; height: 36vmax; right: 4%; top: 30%; animation: sill-spot-b 38s ease-in-out infinite; }
+.sill-spots i:nth-child(3) { width: 30vmax; height: 30vmax; left: 32%; bottom: -6%; animation: sill-spot-c 35s ease-in-out infinite; }
+@keyframes sill-spot-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(7%, 6%) scale(1.08); } }
+@keyframes sill-spot-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-6%, 7%) scale(0.94); } }
+@keyframes sill-spot-c { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(5%, -7%) scale(1.06); } }
+
+/* 林间专属:大衬板——整座时间牌钉在一块深色橡木底板上(横纤维 feTurbulence 木纹,
+   与小牌竖纹垂直,木工上合理),四角平头铜螺丝,板厚端面 + 大重量双层投影;
+   粗麻绳挂环(双股捻纹)从板顶伸出,整块板挂在木屋墙上。
+   z 序:板体 z:-1 垫在所有卡之后(仍在光斑层之前——光斑在容器外 z:0);
+   小牌的投影自然落在衬板上 */
+.sill-frame {
+  position: relative;
+}
+.sill-frame::before {
+  /* 挂绳:两股拧麻绳环,绳底端抵衬板顶边 */
+  content: "";
+  position: absolute;
+  inset: -0.74em -0.36em -0.3em -0.36em;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 50'%3E%3Cg fill='none' stroke='%23A08557' stroke-width='4.2' stroke-linecap='round' stroke-dasharray='4.5 2'%3E%3Cpath d='M30 50 C23 38 12 31 16 10'/%3E%3Cpath d='M30 50 C37 38 48 31 44 10'/%3E%3C/g%3E%3Cpath d='M16 10 Q30 1 44 10' fill='none' stroke='%23A08557' stroke-width='4.2' stroke-linecap='round'/%3E%3C/svg%3E") top 0.04em center / 0.62em 0.5em no-repeat;
+}
+.sill-frame::after {
+  /* 衬板本体:横纤维木纹 + 拼板缝(多块窄板拼接的竖直缝线) + 基底渐变 + 端面 + 四角铜螺丝 */
+  content: "";
+  position: absolute;
+  inset: -0.2em -0.36em -0.3em -0.36em;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 0.035em;
+  background:
+    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) left 0.12em top 0.12em / 0.085em 0.085em no-repeat,
+    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) right 0.12em top 0.12em / 0.085em 0.085em no-repeat,
+    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) left 0.12em bottom 0.16em / 0.085em 0.085em no-repeat,
+    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) right 0.12em bottom 0.16em / 0.085em 0.085em no-repeat,
+    repeating-linear-gradient(90deg, rgba(100, 76, 44, 0.4) 0 0.012em, transparent 0.012em 0.04em) left bottom / 100% 0.06em no-repeat,
+    linear-gradient(180deg, #a9865a 0%, #8a6a44 100%) left bottom / 100% 0.06em no-repeat,
+    repeating-linear-gradient(90deg, transparent 0 0.563em, rgba(255, 244, 220, 0.22) 0.563em 0.576em, transparent 0.576em 1.1em),
+    repeating-linear-gradient(90deg, transparent 0 0.55em, rgba(66, 47, 26, 0.5) 0.55em 0.563em, transparent 0.563em 1.1em),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1120' height='300' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.05' numOctaves='4' seed='21' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.27 0 0 0 0 0.19 0 0 0 0 0.1 0 0 0 0.62 0'/%3E%3C/filter%3E%3Crect width='1120' height='300' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
+    linear-gradient(180deg, #c2a071 0%, #b28d5f 55%, #9f7c50 100%);
+  box-shadow:
+    inset 0 0.03em 0.05em rgba(255, 250, 235, 0.28),
+    inset 0.03em 0 0.05em rgba(255, 250, 235, 0.12),
+    inset -0.03em 0 0.05em rgba(90, 65, 35, 0.3),
+    0 0.03em 0.07em rgba(105, 80, 50, 0.35),
+    0 0.1em 0.24em rgba(115, 88, 55, 0.3);
+}
+
+/* 林间专属:日期行 Ma Shan Zheng 手写(字距收紧,手写体要挤一点才自然) +
+   暖橙徽章(全画面唯一跳色,油漆手写风) */
+[data-theme="sill"] .info-row {
+  font-family: "Ma Shan Zheng", "Noto Sans SC", sans-serif !important;
+}
+[data-theme="sill"] .info-date {
+  letter-spacing: 0.02em !important;
+}
+[data-theme="sill"] .info-badge {
+  font-family: "Ma Shan Zheng", "Noto Sans SC", sans-serif;
+  border-radius: 0.25em;
+}
+/* 治愈小句子轮换:淡入 0.6s(InfoBar 里 key 变化重挂载触发) */
+.info-quote {
+  animation: sill-quote-in 0.6s ease;
+}
+@keyframes sill-quote-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 :root {
   font-family: "Oswald", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;

@@ -35,12 +35,12 @@ export default function AmbientBackground({ mode }: AmbientBackgroundProps) {
 
   return (
     <div className="fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      {/* 基础径向渐变背景(所有模式共有) */}
+      {/* 基础径向渐变背景(所有模式共有;主题可用 --page-bg 覆盖整体背景,如林间小屋的亚麻纵向渐变) */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(120% 120% at 50% 40%, var(--bg-via) 0%, var(--bg-from) 60%, var(--bg-to) 100%)",
+            "var(--page-bg, radial-gradient(120% 120% at 50% 40%, var(--bg-via) 0%, var(--bg-from) 60%, var(--bg-to) 100%))",
         }}
       />
 

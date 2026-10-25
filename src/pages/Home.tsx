@@ -11,6 +11,16 @@ import { THEME_OPTIONS, useClockStore } from "@/store/clockStore";
 
 const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** 软糖捏捏:糖果冒号——两颗上下交替跳动的圆点(替代组间留白,主题专属) */
+function GummyColon() {
+  return (
+    <span className="gummy-colon" aria-hidden="true">
+      <i />
+      <i />
+    </span>
+  );
+}
+
 interface HomeProps {
   /** 屏保运行态:隐藏所有交互控件,纯展示,任意输入退出 */
   saverMode?: boolean;
@@ -156,16 +166,22 @@ export default function Home({ saverMode = false }: HomeProps) {
   // 翻页卡尺寸:基于视口动态计算,在原值基础上整体放大约 2 倍(受视口约束)
   // cardH 加大使数字占卡片纵向约 60%(字形约 0.7em / 1.2em ≈ 58%)
   // 加 max 下限:屏保预览窗口(控制面板小显示器)视口极小,避免时间缩到不可读
-  // voxel 主题:字号等比缩小 25%(Press Start 2P 视觉偏大),但卡片尺寸保持不变
-  //   → cardW/cardH 改用 px(基于 cardFontBase 计算),不随字号缩放;
-  //   → cardFont 单独缩小,只影响数字大小;
-  //   → 其他主题 cardW/cardH 仍用 em(随字号等比缩放,保持原行为)
-  const voxelScale = theme === "voxel" ? 0.88 : 1;
+  // 卡片与字号解耦的主题(卡尺寸以未缩放的 cardFontBase 计 px,不随字号缩放):
+  //   voxel:字号缩 12%(Press Start 2P 视觉偏大),卡片尺寸保持不变;
+  //   gummy:字号放大约 18%(Baloo 2 果冻数字逼近撑满卡面,卡放宽至 0.7);
+  //   sill:Alfa Slab One 烙印体(方正厚重,宽牌 0.68 容纳衬线字形)
+  const fixedCard = theme === "voxel" || theme === "gummy" || theme === "sill";
+  const fontScale = theme === "voxel" ? 0.88 : theme === "gummy" ? 1.18 : theme === "sill" ? 0.96 : 1;
   const cardFontBase = showSeconds ? "max(32px, min(20vw, 34vh))" : "max(48px, min(28vw, 46vh))";
-  const cardFont = voxelScale !== 1 ? `calc(${cardFontBase} * ${voxelScale})` : cardFontBase;
-  // voxel 用 px 绝对单位(基于未缩放的 cardFontBase),卡片尺寸保持和其他主题一致
-  const cardW = theme === "voxel" ? `calc(${cardFontBase} * 0.62)` : showSeconds ? "0.62em" : "0.62em";
-  const cardH = theme === "voxel" ? `calc(${cardFontBase} * 1.2)` : "1.2em";
+  const cardFont = fontScale !== 1 ? `calc(${cardFontBase} * ${fontScale})` : cardFontBase;
+  const cardW = fixedCard
+    ? `calc(${cardFontBase} * ${theme === "gummy" ? 0.7 : theme === "sill" ? 0.68 : 0.62})`
+    : "0.62em";
+  const cardH = fixedCard ? `calc(${cardFontBase} * 1.2)` : "1.2em";
+  // 翻页动画变体:gummy/sill 有专属时序(落地回弹/摇晃),其余主题经典翻页。
+  // 林间小屋:秒组另传 sway=false(见下)——每秒翻页重启摇晃的截断感读起来
+  // "一抽一抽",摇晃只留给低频的时/分牌完整播完 3s 慢衰减
+  const flipVariant = theme === "gummy" ? ("gummy" as const) : theme === "sill" ? ("sill" as const) : undefined;
 
   return (
     <main
@@ -179,6 +195,15 @@ export default function Home({ saverMode = false }: HomeProps) {
     >
       <AmbientBackground mode={backgroundMode} />
 
+      {/* 林间小屋:叶隙阳光光斑(大而极淡,缓慢漂移;仅极简背景模式) */}
+      {theme === "sill" && backgroundMode === "minimal" && (
+        <div className="sill-spots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
+
       {!saverMode && (
         <ControlBar
           onMinimize={handleMinimize}
@@ -191,7 +216,7 @@ export default function Home({ saverMode = false }: HomeProps) {
       {/* 时钟舞台 */}
       <div className="relative z-10 h-full w-full flex flex-col items-center justify-center select-none">
         <div
-          className="animate-fade-in-up flex items-end justify-center"
+          className={`clock-stage${theme === "sill" ? " sill-frame" : ""} animate-fade-in-up flex items-end justify-center`}
           style={
             {
               "--card-w": cardW,
@@ -200,20 +225,22 @@ export default function Home({ saverMode = false }: HomeProps) {
             } as React.CSSProperties
           }
         >
-          <FlipCardGroup value={time.hours} />
-          <span style={{ width: "0.4em" }} aria-hidden />
-          <FlipCardGroup value={time.minutes} />
+          <FlipCardGroup value={time.hours} variant={flipVariant} />
+          {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
+          <FlipCardGroup value={time.minutes} variant={flipVariant} />
           {showSeconds && (
             <>
-              <span style={{ width: "0.4em" }} aria-hidden />
-              <FlipCardGroup value={time.seconds} />
+              {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
+              {/* 秒组不摇晃(sway=false):每秒撞一次+动画重启的角度跳变会"一抽一抽的",
+                  摇晃只留给分/时组的整分时刻 */}
+              <FlipCardGroup value={time.seconds} variant={flipVariant} sway={false} />
             </>
           )}
         </div>
 
         {showInfoBar && (
           <div className="mt-[10vh] animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <InfoBar date={time.date} is24Hour={is24Hour} />
+            <InfoBar date={time.date} is24Hour={is24Hour} theme={theme} />
           </div>
         )}
 
@@ -270,6 +297,10 @@ function labelOf(theme: string): string {
       return "水墨韵";
     case "clay":
       return "奶芙紫";
+    case "gummy":
+      return "软糖捏捏";
+    case "sill":
+      return "林间小屋";
     default:
       return theme;
   }
