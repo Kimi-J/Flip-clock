@@ -343,8 +343,9 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       pileOff: new Map<number, { x: number; y: number }>(),
       pileActive: false,
       gustWind: 0,
-      gustDoneMin: -1, // 本分钟是否已触发过整点风起(防重入)
-      curMinOfHour: 0, // 当前分钟在小时内的序号(整点风起判定用)
+      /** 已"武装"的 59 分钟戳(-1 = 未武装):进入 59 分就记下,
+       *  到点后任意一帧都能补发——整点事件不能只活在 59.2-60.0 这 0.8s 里 */
+      gustArmed: -1,
       glass: { x: 160, y: 90 },
       lastSecText: "",
     };
@@ -538,9 +539,10 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
         h.path = null;
         h.bornStamp = minStamp;
         h.slotIdx = minuteOfHour;
-        S.curMinOfHour = minuteOfHour;
-        // 中途挂载:本分钟不补整点风起(避免半路空降的风暴)
-        if (first) S.gustDoneMin = minStamp;
+        // 整点风起武装:一进入 59 分就记下该分钟戳。触发不再依赖"恰好有一帧
+        // 落在 59.2s"——窗口被遮挡、渲染挂起、主线程卡顿都会整点丢失(§7)。
+        // 中途挂载且已过 59.2s 时不武装,避免半路空降的风暴
+        if (minuteOfHour === 59 && !(first && sec >= DETACH_SEC)) S.gustArmed = minStamp;
       }
 
       const heroIdx = minStamp % 2;
@@ -751,16 +753,18 @@ export default function FallingSkin({ scale, is24Hour, showSeconds }: FallingSki
       }
 
       // ---- 整点风起(§7):59 分 59.2s,与最后一片目标叶脱离同一刻 ----
-      // 地面叶堆全部被吹起、飘满窗口,再分头从不同边出画;新小时从空堆开始
-      if (
-        S.curMinOfHour === 59 &&
-        sec >= DETACH_SEC &&
-        S.gustDoneMin !== minStamp &&
-        !gustMirror.current &&
-        pileMirror.current.length > 0
-      ) {
-        S.gustDoneMin = minStamp;
-        fireGust();
+      // 地面叶堆全部被吹起、飘满窗口,再分头从不同边出画;新小时从空堆开始。
+      // 补发:若 59.2s 那一帧被错过(遮挡/挂起/卡顿),只要还停在次分钟内,
+      // 下一个能执行的帧就补吹——否则整点的风会静默丢失一小时
+      if (S.gustArmed !== -1 && (sec >= DETACH_SEC || minStamp > S.gustArmed)) {
+        if (
+          minStamp <= S.gustArmed + 1 &&
+          !gustMirror.current &&
+          pileMirror.current.length > 0
+        ) {
+          fireGust();
+        }
+        S.gustArmed = -1; // 一小时只结算一次(空堆也算已结算)
       }
       const g = gustMirror.current;
       if (g) {

@@ -594,6 +594,23 @@ fn webview_data_dir() -> std::path::PathBuf {
         .join("webview-data")
 }
 
+/// WebView2 启动参数。
+/// 必须写全:wry 一旦调用 additional_browser_args 就会整体覆盖它自己的默认值
+/// (默认值就是下面这串 --disable-features=…),漏掉会让小窗冒 Edge 迷你菜单/
+/// SmartScreen 提示。可用 FLIPCLOCK_WEBVIEW_ARGS 覆盖,便于逐台机器排障。
+///
+/// --no-sandbox 的由来:本机 WebView2 的 GPU 子进程在沙箱里起不来,Chromium 在
+/// gpu_data_manager_impl_private.cc 里直接 FATAL("GPU process isn't usable.
+/// Goodbye.")杀掉浏览器进程 —— 表现为窗口全透明,并弹
+/// "msedgewebview2 has stopped working / Error launching CrashSender.exe"
+/// (崩溃转储里能看到 wetype_tip.dll、CrashRpt1500.dll 等第三方注入模块)。
+/// 应用只加载本地打包资源,不访问外网,关沙箱的暴露面可控。
+fn webview_args() -> String {
+    std::env::var("FLIPCLOCK_WEBVIEW_ARGS").unwrap_or_else(|_| {
+        "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --no-sandbox".to_string()
+    })
+}
+
 // ==================== 诊断日志 ====================
 // 写入 exe 同级目录(安装文件夹)flipclock.log;目录不可写(Program Files 等)时
 // 回退 %APPDATA%\com.flipclock.app\。失败静默——诊断用途,绝不影响功能。
@@ -857,6 +874,7 @@ mod window_manager {
             label,
             tauri::WebviewUrl::App("index.html".into()),
         )
+        .additional_browser_args(&crate::webview_args())
         .title("Flip Clock · 翻页时钟")
         .decorations(false)
         .resizable(true)
@@ -1013,6 +1031,7 @@ mod window_manager {
             &label,
             tauri::WebviewUrl::App("index.html".into()),
         )
+        .additional_browser_args(&crate::webview_args())
         .title("Flip Clock · 翻页时钟")
         .inner_size(1280.0, 800.0)
         .fullscreen(true)
@@ -1137,6 +1156,7 @@ mod widget_window {
             next_label(),
             tauri::WebviewUrl::App("index.html".into()),
         )
+        .additional_browser_args(&crate::webview_args())
         .title("Flip Clock · 小部件")
         .decorations(false)
         .transparent(true)
@@ -1282,6 +1302,7 @@ mod widget_menu_window {
             label,
             tauri::WebviewUrl::App("index.html".into()),
         )
+        .additional_browser_args(&crate::webview_args())
         .title("Flip Clock · 菜单")
         .decorations(false)
         .transparent(true)
@@ -1624,6 +1645,7 @@ fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
                     label,
                     tauri::WebviewUrl::App("index.html".into()),
                 )
+                .additional_browser_args(&crate::webview_args())
                 .title("Flip Clock · 翻页时钟")
                 .decorations(false)
                 .always_on_top(true)
@@ -1654,6 +1676,7 @@ fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
         "saver-0",
         tauri::WebviewUrl::App("index.html".into()),
     )
+    .additional_browser_args(&crate::webview_args())
     .title("Flip Clock · 翻页时钟")
     .fullscreen(true)
     .decorations(false)
