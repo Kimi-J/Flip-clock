@@ -137,6 +137,13 @@ export default function Home({ saverMode = false }: HomeProps) {
   useEffect(() => {
     if (saverMode) return;
     const onKey = (e: KeyboardEvent) => {
+      // 仅全屏主页处理 Esc:优先关闭设置面板,否则退出整个应用。
+      // 放在输入控件过滤之前,确保焦点在滑块上时也不会误退程序。
+      if (e.key === "Escape") {
+        if (settingsOpen) setSettingsOpen(false);
+        else handleClose();
+        return;
+      }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       switch (e.key.toLowerCase()) {
@@ -156,15 +163,12 @@ export default function Home({ saverMode = false }: HomeProps) {
           toggleSeconds();
           showToast(showSeconds ? "已隐藏秒" : "已显示秒");
           break;
-        case "escape":
-          setSettingsOpen(false);
-          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme, showSeconds, saverMode]);
+  }, [theme, showSeconds, settingsOpen, saverMode]);
 
   // 翻页卡尺寸:基于视口动态计算,在原值基础上整体放大约 2 倍(受视口约束)
   // cardH 加大使数字占卡片纵向约 60%(字形约 0.7em / 1.2em ≈ 58%)

@@ -1,0 +1,20 @@
+- generic [ref=e3]:
+  - generic [ref=e5]:
+    - generic:
+      - generic:
+        - generic: FALLING TIME
+        - generic:
+          - generic: "2"
+          - generic: "2"
+          - generic: ":"
+          - generic: "0"
+          - generic: "8"
+        - generic:
+          - text: OCT 25 · SUN ·
+          - generic: "5"
+          - generic: "4"
+  - button "小部件设置" [ref=e6] [cursor=pointer]
+  - button "关闭" [ref=e8] [cursor=pointer]
+  - generic "nw 缩放" [ref=e12]
+  - generic "sw 缩放" [ref=e13]
+  - generic "se 缩放" [ref=e14]

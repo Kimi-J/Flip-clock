@@ -1,0 +1,13 @@
+- generic [ref=e3]:
+  - generic [ref=e4]: "[plugin:vite:import-analysis] Failed to resolve import \"@/pages/ConfigPage\" from \"src/App.tsx\". Does the file exist?"
+  - generic [ref=e5]: D:/008Code/004SC/src/App.tsx:3:23
+  - generic [ref=e6]: "18 | import { useEffect } from \"react\"; 19 | import { listen } from \"@tauri-apps/api/event\"; 20 | import ConfigPage from \"@/pages/ConfigPage\"; | ^ 21 | import Home from \"@/pages/Home\"; 22 | import WidgetMenuPage from \"@/pages/WidgetMenuPage\";"
+  - generic [ref=e7]: at TransformPluginContext._formatLog (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42658:41) at TransformPluginContext.error (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42655:16) at normalizeUrl (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40634:23) at process.processTicksAndRejections (node:internal/process/task_queues:103:5) at async file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40753:37 at async Promise.all (index 5) at async TransformPluginContext.transform (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:40680:7) at async EnvironmentPluginContainer.transform (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:42453:18) at async loadAndTransform (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:35845:27) at async viteTransformMiddleware (file:///d:/008Code/004SC/node_modules/vite/dist/node/chunks/dep-Dm0c1Wj2.js:37369:24
+  - generic [ref=e8]:
+    - text: Click outside, press Esc key, or fix the code to dismiss.You can also disable this overlay by setting
+    - code [ref=e9]: server.hmr.overlay
+    - text: to
+    - code [ref=e10]: "false"
+    - text: in
+    - code [ref=e11]: vite.config.ts
+    - text: .

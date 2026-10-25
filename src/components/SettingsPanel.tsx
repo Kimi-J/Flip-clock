@@ -426,7 +426,7 @@ export default function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <Kbd>Space</Kbd>
               </li>
               <li className="flex justify-between">
-                <span>关闭面板</span>
+                <span>关闭面板 / 退出程序</span>
                 <Kbd>Esc</Kbd>
               </li>
             </ul>
