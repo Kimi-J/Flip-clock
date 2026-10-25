@@ -1,25 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 
-export type FlipVariant = "classic" | "gummy" | "sill";
+export type FlipVariant = "classic" | "gummy";
 
 /** 各变体的翻页时序:flip = 翻片时长(与 CSS 动画时长一致),
- *  settle = 落地余韵时长(仅 gummy:回弹由 React 状态驱动;
- *  sill 的摇晃在落定撞击时经 ref 直控起拍,不走 settle) */
+ *  settle = 落地余韵时长(仅 gummy:回弹由 React 状态驱动) */
 const TIMING: Record<FlipVariant, { flip: number; settle: number }> = {
   classic: { flip: 600, settle: 0 },
   gummy: { flip: 600, settle: 350 },
-  sill: { flip: 550, settle: 0 },
 };
 
 interface FlipCardProps {
   /** 当前显示的数字 0-9 */
   value: number;
-  /** 动画变体:控制翻页时长与落地余韵(gummy 果冻回弹 / sill 挂牌摇晃),
+  /** 动画变体:控制翻页时长与落地余韵(gummy 果冻回弹),
    *  余韵动画本身由 CSS 按 data-theme 驱动,无对应 CSS 的主题为纯 no-op */
   variant?: FlipVariant;
-  /** 是否播放落地摇晃(仅 sill 生效):秒组传 false——每秒撞一次+动画重启
-   *  的角度跳变会让牌子"一抽一抽的";摇晃只留给分/时组的整分时刻 */
-  sway?: boolean;
 }
 
 /**
@@ -35,13 +30,12 @@ interface FlipCardProps {
  *   90°→180°:翻片翻过中线,上半卡新值上半露出;翻片背面新值下半朝外覆盖下半卡 → 观众看到完整新值
  *   结束    :移除翻片,上下半卡均为新值;有 settle 的变体随后播放落地余韵
  */
-export default function FlipCard({ value, variant = "classic", sway = true }: FlipCardProps) {
+export default function FlipCard({ value, variant = "classic" }: FlipCardProps) {
   const [current, setCurrent] = useState(value);
   const [previous, setPrevious] = useState(value);
   const [flipping, setFlipping] = useState(false);
   const [bouncing, setBouncing] = useState(false);
   const timersRef = useRef<number[]>([]);
-  const unitRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (value === current) return;
@@ -55,17 +49,7 @@ export default function FlipCard({ value, variant = "classic", sway = true }: Fl
     timers.push(
       window.setTimeout(() => {
         setFlipping(false); // 下半卡此时回到 current
-        if (variant === "sill" && sway) {
-          // 落定撞击:翻片砸回卡面,牌子被震,重力衰减摆 1.8s(CSS 播完自然停,
-          // 无需收尾 timer)。经 ref 直控挂 class——React 对未变化的 className
-          // 不会重设 DOM,ref 加的 class 才能在每秒重渲染间存活;
-          // 双 rAF:确保"移除"先被渲染捕获,再挂回才能重启动画
-          const el = unitRef.current;
-          if (el) {
-            el.classList.remove("is-bouncing");
-            requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("is-bouncing")));
-          }
-        } else if (t.settle > 0) {
+        if (t.settle > 0) {
           setBouncing(true);
         }
       }, t.flip),
@@ -83,7 +67,7 @@ export default function FlipCard({ value, variant = "classic", sway = true }: Fl
   const unitClass = ["flip-unit", bouncing && "is-bouncing"].filter(Boolean).join(" ");
 
   return (
-    <span ref={unitRef} className={unitClass} aria-label={String(current)}>
+    <span className={unitClass} aria-label={String(current)}>
       {/* 静态上半卡:显示新值上半 */}
       <span className="flip-static flip-static--top">
         <span className="flip-static__digit">{current}</span>

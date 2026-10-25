@@ -69,7 +69,7 @@ export const THEME_OPTIONS: { value: ThemeName; label: string; swatch: string }[
   { value: "ink", label: "水墨韵", swatch: "linear-gradient(135deg,#e8e4dc,#2a2a2a)" },
   { value: "clay", label: "奶芙紫", swatch: "linear-gradient(135deg,#f7f3ff,#a78bfa)" },
   { value: "gummy", label: "软糖捏捏", swatch: "linear-gradient(135deg,#ffb7c9,#ff7ba2)" },
-  { value: "sill", label: "林间小屋", swatch: "linear-gradient(135deg,#e8d5b7,#6b7f5e)" },
+  { value: "sill", label: "林间小屋", swatch: "linear-gradient(135deg,#5b3b29,#294336)" },
 ];
 
 const STORAGE_KEY = "flip-clock-settings-v1";

@@ -6,6 +6,9 @@ import ControlBar from "@/components/ControlBar";
 import FlipCardGroup from "@/components/FlipCardGroup";
 import InfoBar from "@/components/InfoBar";
 import SettingsPanel from "@/components/SettingsPanel";
+import SillClock from "@/components/SillClock";
+import SillScene from "@/components/SillScene";
+import { cabinPhase } from "@/lib/cabinPhase";
 import { useClockTime } from "@/hooks/useClockTime";
 import { THEME_OPTIONS, useClockStore } from "@/store/clockStore";
 
@@ -168,20 +171,20 @@ export default function Home({ saverMode = false }: HomeProps) {
   // 加 max 下限:屏保预览窗口(控制面板小显示器)视口极小,避免时间缩到不可读
   // 卡片与字号解耦的主题(卡尺寸以未缩放的 cardFontBase 计 px,不随字号缩放):
   //   voxel:字号缩 12%(Press Start 2P 视觉偏大),卡片尺寸保持不变;
-  //   gummy:字号放大约 18%(Baloo 2 果冻数字逼近撑满卡面,卡放宽至 0.7);
-  //   sill:Alfa Slab One 烙印体(方正厚重,宽牌 0.68 容纳衬线字形)
-  const fixedCard = theme === "voxel" || theme === "gummy" || theme === "sill";
-  const fontScale = theme === "voxel" ? 0.88 : theme === "gummy" ? 1.18 : theme === "sill" ? 0.96 : 1;
+  //   gummy:字号放大约 18%(Baloo 2 果冻数字逼近撑满卡面,卡放宽至 0.7)
+  // 林间小屋(v5)不走本套尺寸体系:钟柜几何由主题 CSS 自己的
+  // --clock-w/--clock-h/--card-h clamp 组控制(见 index.css sill 段)
+  const fixedCard = theme === "voxel" || theme === "gummy";
+  const fontScale = theme === "voxel" ? 0.88 : theme === "gummy" ? 1.18 : 1;
   const cardFontBase = showSeconds ? "max(32px, min(20vw, 34vh))" : "max(48px, min(28vw, 46vh))";
   const cardFont = fontScale !== 1 ? `calc(${cardFontBase} * ${fontScale})` : cardFontBase;
   const cardW = fixedCard
-    ? `calc(${cardFontBase} * ${theme === "gummy" ? 0.7 : theme === "sill" ? 0.68 : 0.62})`
+    ? `calc(${cardFontBase} * ${theme === "gummy" ? 0.7 : 0.62})`
     : "0.62em";
   const cardH = fixedCard ? `calc(${cardFontBase} * 1.2)` : "1.2em";
-  // 翻页动画变体:gummy/sill 有专属时序(落地回弹/摇晃),其余主题经典翻页。
-  // 林间小屋:秒组另传 sway=false(见下)——每秒翻页重启摇晃的截断感读起来
-  // "一抽一抽",摇晃只留给低频的时/分牌完整播完 3s 慢衰减
-  const flipVariant = theme === "gummy" ? ("gummy" as const) : theme === "sill" ? ("sill" as const) : undefined;
+  // 翻页动画变体:gummy 有专属时序(落地回弹),其余主题经典翻页。
+  // 林间小屋用专属双翻片折叠结构(SillClock/SillFlipCard),不经 FlipCardGroup
+  const flipVariant = theme === "gummy" ? ("gummy" as const) : undefined;
 
   return (
     <main
@@ -195,14 +198,8 @@ export default function Home({ saverMode = false }: HomeProps) {
     >
       <AmbientBackground mode={backgroundMode} />
 
-      {/* 林间小屋:叶隙阳光光斑(大而极淡,缓慢漂移;仅极简背景模式) */}
-      {theme === "sill" && backgroundMode === "minimal" && (
-        <div className="sill-spots" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </div>
-      )}
+      {/* 林间小屋(v5):木屋场景层由主题自带(SillScene),覆盖通用氛围背景 */}
+      {theme === "sill" && <SillScene phase={cabinPhase(time.date)} />}
 
       {!saverMode && (
         <ControlBar
@@ -213,51 +210,53 @@ export default function Home({ saverMode = false }: HomeProps) {
         />
       )}
 
-      {/* 时钟舞台 */}
-      <div className="relative z-10 h-full w-full flex flex-col items-center justify-center select-none">
-        <div
-          className={`clock-stage${theme === "sill" ? " sill-frame" : ""} animate-fade-in-up flex items-end justify-center`}
-          style={
-            {
-              "--card-w": cardW,
-              "--card-h": cardH,
-              fontSize: cardFont,
-            } as React.CSSProperties
-          }
-        >
-          <FlipCardGroup value={time.hours} variant={flipVariant} />
-          {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
-          <FlipCardGroup value={time.minutes} variant={flipVariant} />
-          {showSeconds && (
-            <>
-              {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
-              {/* 秒组不摇晃(sway=false):每秒撞一次+动画重启的角度跳变会"一抽一抽的",
-                  摇晃只留给分/时组的整分时刻 */}
-              <FlipCardGroup value={time.seconds} variant={flipVariant} sway={false} />
-            </>
+      {/* 时钟舞台:林间小屋为胡桃木壁挂钟柜(自带场景与几何),其余主题通用翻页卡 */}
+      {theme === "sill" ? (
+        <SillClock time={time} showSeconds={showSeconds} showInfoBar={showInfoBar} />
+      ) : (
+        <div className="relative z-10 h-full w-full flex flex-col items-center justify-center select-none">
+          <div
+            className="clock-stage animate-fade-in-up flex items-end justify-center"
+            style={
+              {
+                "--card-w": cardW,
+                "--card-h": cardH,
+                fontSize: cardFont,
+              } as React.CSSProperties
+            }
+          >
+            <FlipCardGroup value={time.hours} variant={flipVariant} />
+            {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
+            <FlipCardGroup value={time.minutes} variant={flipVariant} />
+            {showSeconds && (
+              <>
+                {theme === "gummy" ? <GummyColon /> : <span style={{ width: "0.4em" }} aria-hidden />}
+                <FlipCardGroup value={time.seconds} variant={flipVariant} />
+              </>
+            )}
+          </div>
+
+          {showInfoBar && (
+            <div className="mt-[10vh] animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
+              <InfoBar date={time.date} is24Hour={is24Hour} />
+            </div>
+          )}
+
+          {/* 底部品牌细线(仅非屏保模式) */}
+          {!saverMode && (
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 transition-opacity duration-300"
+              style={{ opacity: controlsVisible ? 0.6 : 0 }}
+            >
+              <span className="h-px w-10" style={{ background: "linear-gradient(90deg,transparent,var(--accent))" }} />
+              <span className="text-[10px] tracking-[0.4em] uppercase" style={{ color: "var(--text-muted)", fontFamily: '"Oswald",sans-serif' }}>
+                Flip Clock
+              </span>
+              <span className="h-px w-10" style={{ background: "linear-gradient(90deg,var(--accent),transparent)" }} />
+            </div>
           )}
         </div>
-
-        {showInfoBar && (
-          <div className="mt-[10vh] animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <InfoBar date={time.date} is24Hour={is24Hour} theme={theme} />
-          </div>
-        )}
-
-        {/* 底部品牌细线(仅非屏保模式) */}
-        {!saverMode && (
-          <div
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 transition-opacity duration-300"
-            style={{ opacity: controlsVisible ? 0.6 : 0 }}
-          >
-            <span className="h-px w-10" style={{ background: "linear-gradient(90deg,transparent,var(--accent))" }} />
-            <span className="text-[10px] tracking-[0.4em] uppercase" style={{ color: "var(--text-muted)", fontFamily: '"Oswald",sans-serif' }}>
-              Flip Clock
-            </span>
-            <span className="h-px w-10" style={{ background: "linear-gradient(90deg,var(--accent),transparent)" }} />
-          </div>
-        )}
-      </div>
+      )}
 
       {!saverMode && <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
 

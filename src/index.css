@@ -740,267 +740,1180 @@
   clip-path: polygon(0 0, 0 100%, 100% 50%);
 }
 
-/* ==================== 林间小屋 ==================== */
-/* 森系治愈:亚麻奶白底 + 叶隙光斑 + 浅橡木挂牌卡(手绘木纹 + 挂牌孔麻绳 + 底部探叶) +
-   鼠尾草绿手写数字 + 暖橙徽章唯一跳色 + 慢翻页落地摇晃 + 叶片冒号 + 治愈小句子 */
+/* ==================== 林间小屋(v5 全量替换) ==================== */
+/* 松林边的小木屋:窗景光随昼夜相位(dawn/day/dusk/night)流转,时间封在
+   胡桃木壁挂钟柜里,双翻片折叠翻页。场景层由 SillScene 渲染(窗/灯/梁/
+   壁炉架/松林缘/质感覆盖),钟柜由 SillClock 渲染,SillFlipCard 管折叠动画。
+   本主题自带完整几何(--clock-w/--clock-h/--card-h),不走 Home 的
+   cardFont/cardW 通用尺寸体系;设置面板等 UI 由下方主题变量驱动。 */
 [data-theme="sill"] {
-  --bg-from: #f1eee2;
-  --bg-via: #f7f4ec;
-  --bg-to: #eae7d9;
-  --page-bg: linear-gradient(180deg, #f7f4ec 0%, #f1eee2 55%, #eae7d9 100%);
-  --bg-glow-1: rgba(232, 168, 124, 0.08);
-  --bg-glow-2: rgba(143, 168, 126, 0.06);
-  --card-from: #ecdabd;
-  --card-to: #d6be97;
-  --card-top-shine: rgba(255, 255, 255, 0.4);
-  --card-bottom-shade: rgba(140, 110, 70, 0.18);
-  --divider: rgba(168, 147, 119, 0.3);
-  --seam: #a89377;
-  --digit: #5c6e50;
-  --digit-shadow: rgba(58, 44, 24, 0.5);
-  --accent: #e8a87c;
-  --accent-with-bg: #c9855a;
-  --accent-soft: rgba(232, 168, 124, 0.18);
-  --text-primary: #7a7263;
-  --text-secondary: #9c9484;
-  --text-muted: #a89e8a;
-  --panel-bg: rgba(247, 244, 236, 0.92);
-  --panel-border: rgba(140, 110, 70, 0.22);
-  --noise-opacity: 0;
-  --badge-text: #fdf9ef;
-  --badge-bg: #e8a87c;
-  --badge-border: transparent;
+  color-scheme: dark;
+
+  /* ---- v5 原始色板 ---- */
+  --ink: #1e1a16;
+  --deep-ink: #171512;
+  --paper: #eee1c9;
+  --paper-soft: #d9c8ab;
+  --walnut: #4b3022;
+  --walnut-dark: #2a1b14;
+  --pine: #284238;
+  --pine-dark: #1b3029;
+  --brass: #aa8653;
+  --brass-light: #d0ae72;
+  --ember: #c77737;
+  --ember-soft: #e1a45a;
+  --sky-top: #b7a785;
+  --sky-bottom: #d5b982;
+  --forest-far: #5c725f;
+  --forest-near: #294336;
+  --ambient: rgba(207, 139, 73, 0.2);
+  --clock-w: min(78vw, 1120px);
+  --clock-h: clamp(330px, 39vh, 470px);
+  --card-h: clamp(180px, 24vh, 290px);
+  --shadow: 0 28px 70px rgba(8, 7, 5, 0.38);
+
+  /* ---- 项目主题体系变量映射 ---- */
+  --bg-from: #21170f;
+  --bg-via: #2d1e16;
+  --bg-to: #21160f;
+  --page-bg: linear-gradient(180deg, #3b281c 0%, #2d1e16 58%, #21160f 100%);
+  --bg-glow-1: rgba(199, 119, 55, 0.14);
+  --bg-glow-2: rgba(170, 134, 83, 0.1);
+  --card-from: #25241f;
+  --card-to: #21201b;
+  --card-top-shine: rgba(255, 255, 255, 0.035);
+  --card-bottom-shade: rgba(0, 0, 0, 0.55);
+  --divider: rgba(0, 0, 0, 0.68);
+  --seam: #171713;
+  --digit: #ede2cd;
+  --digit-shadow: rgba(0, 0, 0, 0.34);
+  --accent: #c77737;
+  --accent-soft: rgba(199, 119, 55, 0.18);
+  --accent-with-bg: #f0d9ae;
+  --text-primary: #eee1c9;
+  --text-secondary: rgba(238, 225, 201, 0.55);
+  --text-muted: rgba(238, 225, 201, 0.32);
+  --panel-bg: rgba(30, 21, 15, 0.82);
+  --panel-border: rgba(194, 153, 92, 0.22);
+  --noise-opacity: 0.05;
 }
 
-/* 林间专属:全局 UI 用 Ma Shan Zheng(中文手写,治愈系桌搭感) */
+/* 林间专属:全局 UI 用 v5 的系统无衬线栈(替代旧版手写体) */
 [data-theme="sill"] body {
-  font-family: "Ma Shan Zheng", "Nunito", "Noto Sans SC", sans-serif;
+  font-family:
+    "SF Pro Display", "PingFang SC", "Microsoft YaHei",
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* 林间专属:数字 Alfa Slab One(粗方衬线,烙铁印出的数字) */
-[data-theme="sill"] .flip-unit,
-[data-theme="sill"] .flip-static__digit,
-[data-theme="sill"] .flip-leaf__digit {
-  font-family: "Alfa Slab One", "Ma Shan Zheng", "Anton", sans-serif !important;
-}
-
-/* 林间专属:烙印质感——深绿烙色,下方暗影(凹槽深度)+ 上方亮棱(凹槽下壁受光),
-  数字像烙铁烫进软木里 */
-[data-theme="sill"] .flip-static__digit,
-[data-theme="sill"] .flip-leaf__digit {
-  text-shadow:
-    0 0.014em 0.02em rgba(58, 44, 24, 0.5),
-    0 -0.007em 0 rgba(255, 252, 240, 0.4);
-}
-
-/* 林间专属:数字"手工烙上去"——每张卡硬编码微偏移 + ±0.5° 微旋转(手工烙印的
-  细微偏差,布局稳定可复现) */
-[data-theme="sill"] .flip-unit .flip-static__digit,
-[data-theme="sill"] .flip-unit .flip-leaf__digit {
-  transform: translate(var(--jit-x, 0), var(--jit-y, 0)) rotate(var(--jit-r, 0deg));
-}
-[data-theme="sill"] .clock-stage > :nth-child(1) .flip-unit:nth-child(1) { --jit-x: 0.004em; --jit-y: 0.005em; --jit-r: 0.5deg; }
-[data-theme="sill"] .clock-stage > :nth-child(1) .flip-unit:nth-child(2) { --jit-x: -0.005em; --jit-y: -0.003em; --jit-r: -0.4deg; }
-[data-theme="sill"] .clock-stage > :nth-child(3) .flip-unit:nth-child(1) { --jit-x: 0.004em; --jit-y: -0.004em; --jit-r: 0.55deg; }
-[data-theme="sill"] .clock-stage > :nth-child(3) .flip-unit:nth-child(2) { --jit-x: -0.003em; --jit-y: 0.005em; --jit-r: -0.5deg; }
-[data-theme="sill"] .clock-stage > :nth-child(5) .flip-unit:nth-child(1) { --jit-x: 0.005em; --jit-y: 0.003em; --jit-r: 0.35deg; }
-[data-theme="sill"] .clock-stage > :nth-child(5) .flip-unit:nth-child(2) { --jit-x: -0.004em; --jit-y: -0.005em; --jit-r: -0.55deg; }
-
-/* 林间专属:木牌卡——真实木纹用 feTurbulence 分形噪声程序化生成(各向异性频率:
-   x 快 y 慢 = 沿纤维方向拉长的竖直纹理,分形叠加自带疏密与"木结"般的不规则),
-   叠在受光渐变上;底部端面(深木色侧面 + 年轮竖纹,一眼看出板厚)+
-   棱线受光(顶/左亮、右暗)+ 嵌槽阴影(见下) */
-[data-theme="sill"] .flip-static--top,
-[data-theme="sill"] .flip-leaf__face--front {
-  border-radius: 0.045em 0.03em 0 0 / 0.03em 0.045em 0 0;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
-    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
-}
-/* 翻片正面:只带自身棱光,不带槽(翻片在槽内翻动,槽属于衬板侧) */
-[data-theme="sill"] .flip-leaf__face--front {
-  box-shadow:
-    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.45),
-    inset 0.022em 0 0.03em rgba(255, 255, 255, 0.3),
-    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
-}
-/* 嵌槽:小牌不是"贴/浮"在衬板上,而是嵌进衬板开出的凹槽里——
-   槽轮廓线(微柔边的 0 扩散环,随卡圆角)+ 紧贴的内壁阴影(偏移极小,包围式),
-   取代原来的浮起式大偏移投影 */
-[data-theme="sill"] .flip-static--top,
-[data-theme="sill"] .flip-static--bottom {
-  box-shadow:
-    0 0 0.004em 0.014em rgba(88, 64, 36, 0.5),
-    0 0.012em 0.03em rgba(88, 64, 36, 0.38),
-    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.3),
-    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
-}
-[data-theme="sill"] .flip-static--bottom {
-  border-radius: 0 0 0.05em 0.035em / 0 0 0.035em 0.05em;
-  background:
-    repeating-linear-gradient(90deg, rgba(122, 96, 60, 0.35) 0 0.01em, transparent 0.01em 0.032em) left bottom / 100% 0.045em no-repeat,
-    linear-gradient(180deg, #c9ab7e 0%, #aa8c60 100%) left bottom / 100% 0.045em no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
-    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
-}
-/* 下半卡槽底稍重(光从上,槽底积影) */
-[data-theme="sill"] .flip-static--bottom {
-  box-shadow:
-    0 0 0.004em 0.014em rgba(88, 64, 36, 0.5),
-    0 0.014em 0.038em rgba(88, 64, 36, 0.46),
-    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.25),
-    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
-}
-[data-theme="sill"] .flip-leaf__face--back {
-  border-radius: 0 0 0.05em 0.035em / 0 0 0.035em 0.05em;
-  background:
-    repeating-linear-gradient(90deg, rgba(122, 96, 60, 0.35) 0 0.01em, transparent 0.01em 0.032em) left bottom / 100% 0.045em no-repeat,
-    linear-gradient(180deg, #c9ab7e 0%, #aa8c60 100%) left bottom / 100% 0.045em no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='136' height='240' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.09 0.008' numOctaves='4' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.15 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='136' height='240' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
-    linear-gradient(180deg, #ecdabd 0%, #e0cba9 50%, #d6be97 100%);
-  box-shadow:
-    inset 0 0.024em 0.035em rgba(255, 255, 255, 0.25),
-    inset -0.022em 0 0.03em rgba(150, 120, 80, 0.25);
-}
-
-/* 林间专属:小牌用一颗铜平头钉钉在衬板上(卡顶棱中央,球面高光钉帽 + 一字槽),
-   底部探叶保留——根在卡后被卡面盖住,叶尖伸出卡底,像衬板前长出来的 */
-[data-theme="sill"] .flip-unit::before {
-  content: "";
-  position: absolute;
-  inset: -0.05em 0 -0.09em 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 42% 36%, #eccf96 0 14%, #a67c44 50%, #71522a 76%, rgba(113, 82, 42, 0) 82%) top 0.005em center / 0.068em 0.068em no-repeat,
-    linear-gradient(63deg, transparent 45%, rgba(80, 58, 28, 0.85) 48%, rgba(80, 58, 28, 0.85) 52%, transparent 55%) top 0.005em center / 0.068em 0.068em no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath d='M15 11 Q16 4 8 1 Q1 3 4 9 Q9 13 15 11 Z' fill='%237C9670'/%3E%3Cpath d='M13 9 Q9 5 5 3' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='0.7'/%3E%3C/svg%3E") right 12% bottom 0.02em / 0.085em 0.065em no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14'%3E%3Cpath d='M1 13 Q0 5 9 1 Q17 4 13 10 Q8 14 1 13 Z' fill='%238FA87E'/%3E%3Cpath d='M3 11 Q8 6 12 3' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='0.7'/%3E%3C/svg%3E") left 14% bottom 0.015em / 0.105em 0.075em no-repeat;
-}
-
-/* 林间专属:翻页物理——重力驱动的自由翻转:慢起(被释放)→ 持续加速下落 →
-   撞到挡块戛然而止(forwards 截断,无缓出收尾);0.55s 为真实 split-flap 量级。
-   落定撞击瞬间(FlipCard 落定 timer 经 ref 直控挂 class)牌子被震,重力衰减摆
-   (平缓参数见下方 keyframes);仅分/时组触发——秒组每秒撞一次+动画重启的
-   角度跳变会"一抽一抽的"(FlipCard 的 sway prop 控制) */
-[data-theme="sill"] .flip-leaf.is-flipping {
-  animation: leaf-flip 0.55s cubic-bezier(0.42, 0, 0.9, 0.62) forwards;
-}
-[data-theme="sill"] .flip-unit {
-  transform-origin: 50% 0;
-}
-[data-theme="sill"] .flip-unit.is-bouncing {
-  animation: sill-sway 3s ease-in-out;
-}
-/* 轻碰后的柔性慢衰减摆:慢起手(0.51s 缓升至峰,起手速度仅为"拍飞式"的
-   ~22%)+ 每摆仅 ×0.74 的缓降(1.1°→0.81°→0.6°→0.44°→0.33°,5 个来回)
-   + 3s 长尾;摆动周期 ~1s 恒定(单摆),各段 ease-in-out = 正弦摆动。
-   幅度校准:峰值 1.1° ≈ 绕顶边 4.6px 摆幅(0.5° 仅 2px,肉眼不可见)。
-   秒牌不触发(Home 秒组传 sway=false)——每秒重启的截断读感"一抽一抽",
-   摇晃只留给分/时组的整分时刻完整播完 */
-@keyframes sill-sway {
-  0% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.35, 0.4, 0.5, 1); }
-  17% { transform: rotate(1.1deg); animation-timing-function: ease-in-out; }
-  33% { transform: rotate(-0.81deg); animation-timing-function: ease-in-out; }
-  50% { transform: rotate(0.6deg); animation-timing-function: ease-in-out; }
-  67% { transform: rotate(-0.44deg); animation-timing-function: ease-in-out; }
-  83% { transform: rotate(0.33deg); animation-timing-function: ease-in-out; }
-  100% { transform: rotate(0deg); }
-}
-
-/* 林间专属:木牌拼接缝——原木深一阶横线(两端渐隐,接缝收尾),两端木销钉暗点 */
-[data-theme="sill"] .flip-unit::after {
-  height: 0.05em;
-  background:
-    radial-gradient(circle, #6e5738 0 42%, rgba(110, 87, 56, 0) 62%) left center / 0.04em 0.04em no-repeat,
-    radial-gradient(circle, #6e5738 0 42%, rgba(110, 87, 56, 0) 62%) right center / 0.04em 0.04em no-repeat,
-    linear-gradient(90deg, transparent 0 2%, rgba(140, 112, 74, 0.55) 5% 95%, transparent 98%) center / 100% 0.014em no-repeat;
-}
-
-/* 林间专属:叶隙阳光光斑——3 个大而极淡的圆形缓慢漂移(约 30s 周期)。
-   radial-gradient 自柔光,只动画 transform(GPU 合成,零 layout/paint 开销) */
-.sill-spots {
+/* ==================== 场景层(.cabin,隔离层内自负 z 序) ==================== */
+[data-theme="sill"] .cabin {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-.sill-spots i {
-  position: absolute;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 249, 227, 0.6) 0%, rgba(255, 249, 227, 0) 68%);
-  will-change: transform;
-}
-.sill-spots i:nth-child(1) { width: 44vmax; height: 44vmax; left: 6%; top: 2%; animation: sill-spot-a 32s ease-in-out infinite; }
-.sill-spots i:nth-child(2) { width: 36vmax; height: 36vmax; right: 4%; top: 30%; animation: sill-spot-b 38s ease-in-out infinite; }
-.sill-spots i:nth-child(3) { width: 30vmax; height: 30vmax; left: 32%; bottom: -6%; animation: sill-spot-c 35s ease-in-out infinite; }
-@keyframes sill-spot-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(7%, 6%) scale(1.08); } }
-@keyframes sill-spot-b { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-6%, 7%) scale(0.94); } }
-@keyframes sill-spot-c { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(5%, -7%) scale(1.06); } }
-
-/* 林间专属:大衬板——整座时间牌钉在一块深色橡木底板上(横纤维 feTurbulence 木纹,
-   与小牌竖纹垂直,木工上合理),四角平头铜螺丝,板厚端面 + 大重量双层投影;
-   粗麻绳挂环(双股捻纹)从板顶伸出,整块板挂在木屋墙上。
-   z 序:板体 z:-1 垫在所有卡之后(仍在光斑层之前——光斑在容器外 z:0);
-   小牌的投影自然落在衬板上 */
-.sill-frame {
-  position: relative;
-}
-.sill-frame::before {
-  /* 挂绳:两股拧麻绳环,绳底端抵衬板顶边 */
-  content: "";
-  position: absolute;
-  inset: -0.74em -0.36em -0.3em -0.36em;
-  z-index: 1;
-  pointer-events: none;
+  overflow: hidden;
+  isolation: isolate;
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 50'%3E%3Cg fill='none' stroke='%23A08557' stroke-width='4.2' stroke-linecap='round' stroke-dasharray='4.5 2'%3E%3Cpath d='M30 50 C23 38 12 31 16 10'/%3E%3Cpath d='M30 50 C37 38 48 31 44 10'/%3E%3C/g%3E%3Cpath d='M16 10 Q30 1 44 10' fill='none' stroke='%23A08557' stroke-width='4.2' stroke-linecap='round'/%3E%3C/svg%3E") top 0.04em center / 0.62em 0.5em no-repeat;
+    radial-gradient(80% 55% at 50% 38%, rgba(225, 174, 107, 0.1), transparent 70%),
+    linear-gradient(180deg, #3b281c 0%, #2d1e16 58%, #21160f 100%);
+  transition: background 0.9s ease, filter 0.9s ease;
 }
-.sill-frame::after {
-  /* 衬板本体:横纤维木纹 + 拼板缝(多块窄板拼接的竖直缝线) + 基底渐变 + 端面 + 四角铜螺丝 */
+
+/* 昼夜相位:只换窗景与氛围光的颜色变量,0.9s 过渡 */
+[data-theme="sill"] .cabin.phase-dawn {
+  --sky-top: #b6a29b;
+  --sky-bottom: #e2b77d;
+  --forest-far: #6b7969;
+  --forest-near: #2c4438;
+  --ambient: rgba(226, 147, 75, 0.24);
+}
+[data-theme="sill"] .cabin.phase-day {
+  --sky-top: #c8bf9f;
+  --sky-bottom: #e4ca96;
+  --forest-far: #687d68;
+  --forest-near: #2a4738;
+  --ambient: rgba(224, 174, 94, 0.16);
+}
+[data-theme="sill"] .cabin.phase-dusk {
+  --sky-top: #7c7581;
+  --sky-bottom: #cf9069;
+  --forest-far: #4e5d55;
+  --forest-near: #22362f;
+  --ambient: rgba(211, 111, 60, 0.24);
+}
+[data-theme="sill"] .cabin.phase-night {
+  --sky-top: #28323d;
+  --sky-bottom: #59605d;
+  --forest-far: #30463f;
+  --forest-near: #182923;
+  --ambient: rgba(203, 123, 55, 0.28);
+}
+
+/* 墙体 plank 拼板纹理(横向板缝 + 竖向拼缝 + 两侧受光) */
+[data-theme="sill"] .cabin::before {
   content: "";
   position: absolute;
-  inset: -0.2em -0.36em -0.3em -0.36em;
+  inset: 0;
+  z-index: -8;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.018) 0 1px,
+      transparent 1px 8.6vh
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 19.8vw,
+      rgba(20, 11, 7, 0.23) 19.8vw 20vw
+    ),
+    linear-gradient(90deg,
+      rgba(255, 255, 255, 0.025),
+      transparent 14% 86%,
+      rgba(0, 0, 0, 0.1)
+    );
+  opacity: 0.88;
+}
+
+[data-theme="sill"] .wood-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: 0.16;
+  background:
+    repeating-radial-gradient(
+      ellipse at 15% 25%,
+      transparent 0 18px,
+      rgba(240, 214, 170, 0.14) 19px 20px,
+      transparent 21px 34px
+    ),
+    repeating-linear-gradient(
+      3deg,
+      transparent 0 13px,
+      rgba(255, 255, 255, 0.05) 14px,
+      transparent 15px 29px
+    );
+  filter: contrast(125%);
+}
+
+[data-theme="sill"] .vignette {
+  position: absolute;
+  inset: -8%;
+  z-index: 31;
+  pointer-events: none;
+  box-shadow: inset 0 0 180px 80px rgba(7, 6, 4, 0.32);
+}
+
+[data-theme="sill"] .grain {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  pointer-events: none;
+  opacity: 0.055;
+  background-image:
+    radial-gradient(circle at 12% 22%, #fff 0 0.55px, transparent 0.65px),
+    radial-gradient(circle at 72% 66%, #fff 0 0.5px, transparent 0.6px),
+    radial-gradient(circle at 48% 42%, #000 0 0.45px, transparent 0.55px);
+  background-size: 8px 9px, 11px 12px, 7px 8px;
+}
+
+[data-theme="sill"] .top-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: clamp(58px, 8vh, 92px);
+  z-index: 6;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 18%),
+    repeating-linear-gradient(94deg,
+      rgba(255, 255, 255, 0.018) 0 20px,
+      rgba(0, 0, 0, 0.04) 21px 24px,
+      transparent 25px 46px
+    ),
+    linear-gradient(180deg, #4f3323, #352318 58%, #2b1c14);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.28),
+    inset 0 -1px rgba(255, 255, 255, 0.07),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="sill"] .side-beam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: clamp(26px, 3.3vw, 54px);
+  z-index: 5;
+  background:
+    repeating-linear-gradient(4deg,
+      rgba(255, 255, 255, 0.024) 0 13px,
+      transparent 14px 34px
+    ),
+    linear-gradient(90deg, #2b1a12, #4a3021 42%, #2b1b13);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.24);
+}
+[data-theme="sill"] .side-beam.left { left: 2.4vw; }
+[data-theme="sill"] .side-beam.right { right: 2.4vw; }
+
+/* ---- 窗景 ---- */
+[data-theme="sill"] .window {
+  position: absolute;
+  left: 5.3vw;
+  top: 13.8vh;
+  width: clamp(220px, 22vw, 360px);
+  height: clamp(285px, 43vh, 470px);
+  z-index: 0;
+  border: clamp(12px, 1.5vw, 22px) solid #342219;
+  border-radius: 5px;
+  background: #1b1612;
+  box-shadow:
+    0 24px 45px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 2px rgba(224, 190, 130, 0.08);
+  overflow: hidden;
+}
+
+[data-theme="sill"] .window::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  box-shadow: inset 0 0 28px 8px rgba(17, 11, 8, 0.48);
+  pointer-events: none;
+}
+
+[data-theme="sill"] .window-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 68% 28%, rgba(255, 240, 194, 0.2), transparent 17%),
+    linear-gradient(180deg, var(--sky-top), var(--sky-bottom));
+  transition: background 1s ease;
+}
+
+/* 夜空星点(仅 night 相位) */
+[data-theme="sill"] .phase-night .window-sky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.45;
+  background-image:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 230, 0.9) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 65% 12%, rgba(255, 255, 230, 0.75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 79% 31%, rgba(255, 255, 230, 0.65) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 38% 25%, rgba(255, 255, 230, 0.6) 0 0.8px, transparent 1.3px),
+    radial-gradient(circle at 88% 10%, rgba(255, 255, 230, 0.72) 0 0.8px, transparent 1.3px);
+}
+
+[data-theme="sill"] .sun-moon {
+  position: absolute;
+  right: 13%;
+  top: 11%;
+  width: clamp(34px, 4vw, 58px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f3d6a0;
+  box-shadow:
+    0 0 26px rgba(250, 221, 165, 0.3),
+    0 0 70px rgba(245, 199, 117, 0.18);
+  opacity: 0.72;
+  transform: translateY(0);
+  transition: all 1s ease;
+}
+[data-theme="sill"] .phase-night .sun-moon {
+  background: #dcd7c5;
+  opacity: 0.82;
+  box-shadow: 0 0 24px rgba(220, 220, 205, 0.16);
+}
+[data-theme="sill"] .phase-dusk .sun-moon { transform: translateY(44px); opacity: 0.62; }
+
+[data-theme="sill"] .forest-layer {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: 0;
+  height: 72%;
+  transition: background 0.9s ease;
+}
+
+[data-theme="sill"] .forest-layer.far {
+  bottom: 14%;
+  opacity: 0.58;
+  filter: saturate(0.8);
+  background:
+    linear-gradient(134deg, transparent 0 47%, var(--forest-far) 48% 58%, transparent 59%) 0 100% / 88px 180px repeat-x,
+    linear-gradient(226deg, transparent 0 47%, var(--forest-far) 48% 58%, transparent 59%) 42px 100% / 96px 205px repeat-x;
+}
+
+[data-theme="sill"] .forest-layer.mid {
+  bottom: 2%;
+  opacity: 0.84;
+  background:
+    linear-gradient(132deg, transparent 0 48%, var(--forest-near) 49% 61%, transparent 62%) -12px 100% / 104px 235px repeat-x,
+    linear-gradient(228deg, transparent 0 48%, var(--forest-near) 49% 61%, transparent 62%) 42px 100% / 112px 260px repeat-x;
+}
+
+[data-theme="sill"] .forest-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 21%;
+  background: linear-gradient(180deg, rgba(25, 47, 38, 0.28), rgba(20, 34, 29, 0.94));
+}
+
+[data-theme="sill"] .window-cross-v,
+[data-theme="sill"] .window-cross-h {
+  position: absolute;
+  z-index: 15;
+  background: linear-gradient(90deg, #2e1e16, #493022 50%, #2c1c15);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.36);
+}
+[data-theme="sill"] .window-cross-v { top: 0; bottom: 0; left: 49%; width: 12px; }
+[data-theme="sill"] .window-cross-h {
+  left: 0;
+  right: 0;
+  top: 48%;
+  height: 11px;
+  background: linear-gradient(180deg, #2e1e16, #493022 50%, #2c1c15);
+}
+
+[data-theme="sill"] .curtain {
+  position: absolute;
+  top: -3%;
+  left: -2%;
+  right: -2%;
+  height: 16%;
+  z-index: 17;
+  background:
+    repeating-linear-gradient(92deg,
+      #b9a98d 0 18px,
+      #a6967d 19px 24px,
+      #c2b397 25px 44px
+    );
+  opacity: 0.78;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 14px rgba(22, 15, 10, 0.16);
+}
+
+/* ---- 壁灯 ---- */
+[data-theme="sill"] .lamp {
+  position: absolute;
+  right: 8.2vw;
+  top: 20vh;
+  z-index: 4;
+  width: 94px;
+  height: 200px;
+}
+
+[data-theme="sill"] .lamp .arm {
+  position: absolute;
+  right: 28px;
+  top: 4px;
+  width: 16px;
+  height: 76px;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #6d5333, #b08a50 45%, #73562f);
+  box-shadow: 4px 3px 10px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="sill"] .lamp .arm::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -30px;
+  width: 54px;
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #b08a50, #6e512e);
+}
+
+[data-theme="sill"] .lamp .shade {
+  position: absolute;
+  top: 64px;
+  left: 6px;
+  width: 82px;
+  height: 62px;
+  border-radius: 46% 46% 22% 22%;
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #b49565, #7f663e);
+  box-shadow: inset 0 5px 10px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="sill"] .lamp .bulb {
+  position: absolute;
+  top: 112px;
+  left: 39px;
+  width: 18px;
+  height: 22px;
+  border-radius: 50% 50% 42% 42%;
+  background: #f1c676;
+  box-shadow:
+    0 0 20px rgba(241, 173, 76, 0.72),
+    0 0 65px 25px rgba(225, 139, 58, 0.16);
+  animation: sill-lamp-breathe 5s ease-in-out infinite;
+}
+
+@keyframes sill-lamp-breathe {
+  0%, 100% { box-shadow: 0 0 18px rgba(241, 173, 76, 0.65), 0 0 58px 22px rgba(225, 139, 58, 0.14); }
+  50% { box-shadow: 0 0 23px rgba(241, 173, 76, 0.8), 0 0 72px 28px rgba(225, 139, 58, 0.18); }
+}
+
+/* ---- 壁炉架 / 书堆 / 桌沿 / 松林缘 ---- */
+[data-theme="sill"] .mantel {
+  position: absolute;
+  left: 50%;
+  top: calc(50.3% + var(--clock-h) / 2 + 16px);
+  transform: translateX(-50%);
+  z-index: 12;
+  width: min(84vw, 1220px);
+  height: clamp(34px, 5vh, 54px);
+  border-radius: 4px 4px 7px 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 19%),
+    repeating-linear-gradient(93deg,
+      rgba(255, 255, 255, 0.02) 0 26px,
+      rgba(0, 0, 0, 0.04) 27px 31px,
+      transparent 32px 70px
+    ),
+    linear-gradient(180deg, #523522, #3a2419 60%, #271811);
+  box-shadow:
+    0 15px 28px rgba(0, 0, 0, 0.28),
+    inset 0 -8px 12px rgba(0, 0, 0, 0.13);
+  overflow: visible;
+}
+
+[data-theme="sill"] .mug {
+  position: absolute;
+  z-index: 3;
+  right: -12px;
+  top: -34px;
+  width: 38px;
+  height: 36px;
+  border-radius: 5px 5px 10px 10px;
+  background: linear-gradient(135deg, #9a8f78, #c5b79a 55%, #82765f);
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.24),
+    0 10px 14px rgba(0, 0, 0, 0.1),
+    inset 0 1px rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="sill"] .mug::before {
+  content: "";
+  position: absolute;
+  right: -15px;
+  top: 7px;
+  width: 18px;
+  height: 19px;
+  border: 4px solid #8d8068;
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+[data-theme="sill"] .mug::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: -24px;
+  width: 22px;
+  height: 24px;
+  border-radius: 50%;
+  border-left: 2px solid rgba(230, 215, 190, 0.22);
+  transform: rotate(12deg);
+  opacity: 0.55;
+  animation: sill-steam 3.8s ease-in-out infinite;
+}
+
+@keyframes sill-steam {
+  0%, 100% { transform: translate(0, 7px) rotate(12deg) scale(0.88); opacity: 0; }
+  30% { opacity: 0.48; }
+  65% { transform: translate(3px, -5px) rotate(2deg) scale(1.05); opacity: 0.22; }
+}
+
+[data-theme="sill"] .book-stack {
+  position: absolute;
+  z-index: 14;
+  left: max(8vw, calc(50% - 560px));
+  top: calc(50.3% + var(--clock-h) / 2 - 27px);
+  width: 88px;
+  height: 30px;
+}
+
+[data-theme="sill"] .book-stack::before,
+[data-theme="sill"] .book-stack::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 88px;
+  height: 12px;
+  border-radius: 2px 4px 4px 2px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.22);
+}
+[data-theme="sill"] .book-stack::before {
+  bottom: 0;
+  background: linear-gradient(90deg, #516258, #33483e);
+}
+[data-theme="sill"] .book-stack::after {
+  bottom: 13px;
+  left: 10px;
+  width: 74px;
+  background: linear-gradient(90deg, #805342, #56362d);
+}
+
+[data-theme="sill"] .table-band {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 16vh;
+  min-height: 90px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 12%),
+    repeating-linear-gradient(92deg,
+      rgba(255, 255, 255, 0.012) 0 32px,
+      rgba(0, 0, 0, 0.035) 33px 38px,
+      transparent 39px 86px
+    ),
+    linear-gradient(180deg, #2b1c14, #21150f);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="sill"] .table-band::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 8px;
+  background: linear-gradient(180deg, #5a3a28, #362319);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="sill"] .pine-edge {
+  position: absolute;
+  z-index: 8;
+  bottom: 3vh;
+  width: 18vw;
+  min-width: 180px;
+  height: 31vh;
+  min-height: 220px;
+  pointer-events: none;
+  opacity: 0.68;
+  filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.22));
+}
+
+[data-theme="sill"] .pine-edge.left { left: -4vw; transform: rotate(5deg); }
+[data-theme="sill"] .pine-edge.right { right: -5vw; transform: scaleX(-1) rotate(7deg); }
+
+[data-theme="sill"] .pine-edge::before,
+[data-theme="sill"] .pine-edge::after {
+  content: "";
+  position: absolute;
+  left: 36%;
+  bottom: 0;
+  width: 36%;
+  height: 100%;
+  background: linear-gradient(180deg, #39574a, #1b3028);
+  clip-path: polygon(
+    50% 0,
+    62% 16%, 55% 16%, 75% 31%, 61% 30%,
+    86% 49%, 66% 46%, 100% 71%, 68% 64%,
+    93% 89%, 60% 78%, 58% 100%, 42% 100%,
+    42% 79%, 8% 91%, 34% 64%, 0 72%, 34% 46%,
+    13% 50%, 39% 30%, 24% 31%, 45% 16%, 37% 16%
+  );
+}
+
+[data-theme="sill"] .pine-edge::after {
+  left: 4%;
+  bottom: -8%;
+  height: 72%;
+  transform: rotate(-9deg);
+  opacity: 0.74;
+}
+
+[data-theme="sill"] .ambient-glow {
+  position: absolute;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  border-radius: 0.035em;
   background:
-    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) left 0.12em top 0.12em / 0.085em 0.085em no-repeat,
-    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) right 0.12em top 0.12em / 0.085em 0.085em no-repeat,
-    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) left 0.12em bottom 0.16em / 0.085em 0.085em no-repeat,
-    radial-gradient(circle at 42% 36%, #eccf96 0 13%, #a67c44 48%, #71522a 74%, rgba(113, 82, 42, 0) 80%) right 0.12em bottom 0.16em / 0.085em 0.085em no-repeat,
-    repeating-linear-gradient(90deg, rgba(100, 76, 44, 0.4) 0 0.012em, transparent 0.012em 0.04em) left bottom / 100% 0.06em no-repeat,
-    linear-gradient(180deg, #a9865a 0%, #8a6a44 100%) left bottom / 100% 0.06em no-repeat,
-    repeating-linear-gradient(90deg, transparent 0 0.563em, rgba(255, 244, 220, 0.22) 0.563em 0.576em, transparent 0.576em 1.1em),
-    repeating-linear-gradient(90deg, transparent 0 0.55em, rgba(66, 47, 26, 0.5) 0.55em 0.563em, transparent 0.563em 1.1em),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1120' height='300' preserveAspectRatio='none'%3E%3Cfilter id='w' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.05' numOctaves='4' seed='21' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.27 0 0 0 0 0.19 0 0 0 0 0.1 0 0 0 0.62 0'/%3E%3C/filter%3E%3Crect width='1120' height='300' filter='url(%23w)'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
-    linear-gradient(180deg, #c2a071 0%, #b28d5f 55%, #9f7c50 100%);
-  box-shadow:
-    inset 0 0.03em 0.05em rgba(255, 250, 235, 0.28),
-    inset 0.03em 0 0.05em rgba(255, 250, 235, 0.12),
-    inset -0.03em 0 0.05em rgba(90, 65, 35, 0.3),
-    0 0.03em 0.07em rgba(105, 80, 50, 0.35),
-    0 0.1em 0.24em rgba(115, 88, 55, 0.3);
+    radial-gradient(42% 45% at 82% 38%, var(--ambient), transparent 72%),
+    radial-gradient(40% 42% at 20% 32%, rgba(195, 158, 102, 0.08), transparent 76%);
+  transition: background 0.9s ease;
 }
 
-/* 林间专属:日期行 Ma Shan Zheng 手写(字距收紧,手写体要挤一点才自然) +
-   暖橙徽章(全画面唯一跳色,油漆手写风) */
-[data-theme="sill"] .info-row {
-  font-family: "Ma Shan Zheng", "Noto Sans SC", sans-serif !important;
+/* ==================== 钟柜(clock-wrap,main 上下文 z:16) ==================== */
+/* 注意:钟柜靠 left/top + translate(-50%,-50%) 居中,绝不可复用通用
+   animate-fade-in-up——其 keyframes 的 transform(translateY)且带 both 填充,
+   会永久覆盖居中 translate,把整座柜子推向右下出屏。入场动画必须自带居中量 */
+[data-theme="sill"] .clock-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50.3%;
+  transform: translate(-50%, -50%);
+  z-index: 16;
+  width: var(--clock-w);
+  min-width: 620px;
+  height: var(--clock-h);
+  min-height: 330px;
+  animation: sill-cabinet-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-[data-theme="sill"] .info-date {
-  letter-spacing: 0.02em !important;
+
+@keyframes sill-cabinet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
 }
-[data-theme="sill"] .info-badge {
-  font-family: "Ma Shan Zheng", "Noto Sans SC", sans-serif;
-  border-radius: 0.25em;
+
+/* 柜顶挂墙支架 */
+[data-theme="sill"] .clock-wrap::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  transform: translateX(-50%);
+  width: 76%;
+  height: 28px;
+  border-radius: 4px 4px 9px 9px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 45%),
+    linear-gradient(90deg, #2b1a12, #60402b 18%, #49301f 55%, #2b1a12);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.22);
 }
-/* 治愈小句子轮换:淡入 0.6s(InfoBar 里 key 变化重挂载触发) */
-.info-quote {
-  animation: sill-quote-in 0.6s ease;
+
+[data-theme="sill"] .clock-cabinet {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: clamp(28px, 3.2vh, 38px) clamp(34px, 3.2vw, 58px) clamp(26px, 3vh, 34px);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 11%),
+    repeating-linear-gradient(94deg,
+      rgba(255, 255, 255, 0.018) 0 24px,
+      rgba(0, 0, 0, 0.025) 25px 28px,
+      transparent 29px 55px
+    ),
+    linear-gradient(135deg, #5b3b29 0%, #3a261b 52%, #2d1e16 100%);
+  border: 1px solid rgba(219, 179, 111, 0.13);
+  box-shadow:
+    var(--shadow),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.025),
+    inset 0 0 0 10px rgba(22, 13, 9, 0.11),
+    inset 0 -20px 35px rgba(0, 0, 0, 0.16);
 }
-@keyframes sill-quote-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+
+/* 内框线 + 柜内受光凹槽 */
+[data-theme="sill"] .clock-cabinet::before {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border: 1px solid rgba(201, 160, 95, 0.16);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+[data-theme="sill"] .clock-cabinet::after {
+  content: "";
+  position: absolute;
+  inset: 21px 28px;
+  z-index: 0;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 24px rgba(0, 0, 0, 0.34),
+    0 1px rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+}
+
+[data-theme="sill"] .cabinet-screw {
+  position: absolute;
+  z-index: 3;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 35%, #d0a762 0 15%, #8a683b 38%, #4f3923 72%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+[data-theme="sill"] .cabinet-screw.s1 { left: 24px; top: 24px; }
+[data-theme="sill"] .cabinet-screw.s2 { right: 24px; top: 24px; }
+[data-theme="sill"] .cabinet-screw.s3 { left: 24px; bottom: 24px; }
+[data-theme="sill"] .cabinet-screw.s4 { right: 24px; bottom: 24px; }
+
+[data-theme="sill"] .brand-row {
+  position: relative;
+  z-index: 2;
+  height: clamp(26px, 3.4vh, 34px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #cdb58d;
+  padding: 0 4px;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  font-size: clamp(9px, 0.72vw, 12px);
+  font-weight: 650;
+  opacity: 0.82;
+}
+
+[data-theme="sill"] .brand-row .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+[data-theme="sill"] .brand-row .brand-mark::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  border: 1px solid #b98e52;
+  transform: rotate(45deg);
+  box-shadow: inset 0 0 0 3px rgba(185, 142, 82, 0.12);
+}
+
+[data-theme="sill"] .brand-row .local-note {
+  opacity: 0.58;
+  letter-spacing: 0.12em;
+}
+
+/* ---- 时间行:三组双卡(时/分/秒)+ 黄铜分隔点 ---- */
+[data-theme="sill"] .time-row {
+  position: relative;
+  z-index: 2;
+  height: calc(var(--card-h) + 10px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(22px, 3.2vw, 48px) minmax(0, 1fr) clamp(22px, 3.2vw, 48px) minmax(0, 0.88fr);
+  align-items: center;
+  gap: clamp(5px, 0.55vw, 10px);
+  transition: grid-template-columns 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), gap 0.55s ease;
+}
+
+[data-theme="sill"] .clock-cabinet.no-seconds .time-row {
+  grid-template-columns: minmax(0, 1fr) clamp(24px, 4vw, 56px) minmax(0, 1fr);
+  gap: clamp(8px, 1.1vw, 18px);
+}
+
+[data-theme="sill"] .clock-cabinet.no-seconds .seconds-slot,
+[data-theme="sill"] .clock-cabinet.no-seconds .seconds-sep {
+  display: none;
+}
+
+/* 一组两位(十位+个位) */
+[data-theme="sill"] .card-pair {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(4px, 0.5vw, 8px);
+  height: var(--card-h);
+  min-width: 0;
+}
+
+/* ---- 翻页卡:双翻片折叠 ---- */
+[data-theme="sill"] .flip-card {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: var(--card-h);
+  perspective: 1500px;
+  filter: drop-shadow(0 15px 14px rgba(0, 0, 0, 0.3));
+}
+
+/* 卡体只做底板与裁切:描边/受光全部下沉到四个面(静态半卡 + 双翻片)上,
+   任何一面被揭开/盖住都逐像素一致——这是零亮度跳变的关键
+   (本项目成熟主题同款做法:gummy 的 flip-static--top 与 flip-leaf__face--front
+   共用同一 background + box-shadow;其注释原话"翻片带外影会在落定卸载时骤减") */
+[data-theme="sill"] .card-body {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: clamp(8px, 0.75vw, 12px);
+  background:
+    radial-gradient(110% 40% at 50% 0%, rgba(255, 255, 255, 0.035), transparent 55%),
+    linear-gradient(180deg, #25241f 0%, #1c1c18 49.6%, #171713 50.4%, #21201b 100%);
+}
+
+[data-theme="sill"] .flip-half,
+[data-theme="sill"] .flip-flap {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  backface-visibility: hidden;
+  border: 1px solid rgba(205, 190, 159, 0.11);
+}
+
+[data-theme="sill"] .flip-half.top,
+[data-theme="sill"] .flip-flap.top-flap {
+  top: 0;
+  border-radius: clamp(8px, 0.75vw, 12px) clamp(8px, 0.75vw, 12px) 2px 2px;
+}
+
+[data-theme="sill"] .flip-half.bottom,
+[data-theme="sill"] .flip-flap.bottom-flap {
+  bottom: 0;
+  border-radius: 2px 2px clamp(8px, 0.75vw, 12px) clamp(8px, 0.75vw, 12px);
+}
+
+/* 卡面按区域共用:静态半卡与同区翻片必须逐像素一致(背景 + 静态 inset 受光 +
+   描边),否则翻片揭开/盖住的瞬间,两套卡面的亮度/暗边对不上就会跳变。
+   受光只做静态面;运动中的明暗由翻片内遮罩层的 opacity 供给(见下方
+   sill-flap-shade-*,起止两端透明度为 0,落幕即静态卡,零跳变) */
+[data-theme="sill"] .flip-half.top,
+[data-theme="sill"] .flip-flap.top-flap {
+  background:
+    radial-gradient(110% 40% at 50% 0%, rgba(255, 255, 255, 0.035), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(0, 0, 0, 0.05)),
+    linear-gradient(180deg, #25241f 0%, #1c1c18 100%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 0 38px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="sill"] .flip-half.bottom,
+[data-theme="sill"] .flip-flap.bottom-flap {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(0, 0, 0, 0.08)),
+    linear-gradient(180deg, #171713 0%, #21201b 100%);
+  box-shadow:
+    inset 0 -1px rgba(0, 0, 0, 0.55),
+    inset 0 0 38px rgba(0, 0, 0, 0.3);
+}
+
+/* 数字:单位卡(项目按位拆卡,字号取 v5 双数字卡的一半);
+   height 200% + line-height = 整卡高,贴顶/贴底露出半格 */
+[data-theme="sill"] .num {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ede2cd;
+  font-family:
+    "SF Pro Display", "DIN Alternate", "Bahnschrift",
+    "Segoe UI", system-ui, sans-serif;
+  font-weight: 590;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(38px, 5.55vw, 84px);
+  line-height: var(--card-h);
+  letter-spacing: -0.055em;
+  text-indent: -0.055em;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12),
+    0 3px 14px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="sill"] .clock-cabinet.no-seconds .num {
+  font-size: clamp(44px, 6.5vw, 96px);
+}
+
+[data-theme="sill"] .top .num,
+[data-theme="sill"] .top-flap .num { top: 0; }
+
+[data-theme="sill"] .bottom .num,
+[data-theme="sill"] .bottom-flap .num { bottom: 0; }
+
+/* 中缝:上下半格的分界暗线 */
+[data-theme="sill"] .split-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  height: 2px;
+  z-index: 12;
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.68),
+    rgba(0, 0, 0, 0.42) 9%,
+    rgba(196, 178, 145, 0.08) 50%,
+    rgba(0, 0, 0, 0.42) 91%,
+    rgba(0, 0, 0, 0.68)
+  );
+  box-shadow:
+    0 -1px rgba(255, 255, 255, 0.025),
+    0 2px 3px rgba(0, 0, 0, 0.42);
+}
+
+/* 铰链滚轴(对齐中缝) */
+[data-theme="sill"] .roller {
+  position: absolute;
+  top: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  z-index: 14;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #c5a06a 0 13%, #7b603b 40%, #3c2c1c 72%);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+[data-theme="sill"] .roller.left { left: 8px; }
+[data-theme="sill"] .roller.right { right: 8px; }
+
+/* 翻片:与静态半卡共用面规则(见上),只多做一层运动遮罩。
+   翻片在 React 里随 flipping 状态条件挂载/卸载(同本项目 FlipCard 的
+   flip-leaf),落幕与卸载同帧——静态文字始终以同一种抗锯齿方式渲染,
+   不会出现合成层灰度 AA 与静态次像素 AA 之间的亮度差 */
+[data-theme="sill"] .flip-flap {
+  z-index: 11;
+  pointer-events: none;
+  opacity: 0;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* 运动遮光:只跑 opacity(合成层属性,不重绘卡面渐变/文字)。
+   上翻片折下时渐暗(0→0.4,落幕时已侧立成线,值无所谓);
+   下翻片展开时渐明(0.4→0,终帧必须归零才能与静态下半卡逐像素一致) */
+[data-theme="sill"] .flip-flap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.12));
+  opacity: 0;
+}
+
+[data-theme="sill"] .flip-card.is-flipping .top-flap {
+  opacity: 1;
+  transform-origin: bottom center;
+  animation: sill-fold-top 0.32s cubic-bezier(0.32, 0.01, 0.62, 0.37) forwards;
+}
+[data-theme="sill"] .flip-card.is-flipping .top-flap::after {
+  animation: sill-flap-shade-out 0.32s cubic-bezier(0.32, 0.01, 0.62, 0.37) forwards;
+}
+
+[data-theme="sill"] .flip-card.is-flipping .bottom-flap {
+  opacity: 1;
+  transform-origin: top center;
+  transform: rotateX(90deg);
+  animation: sill-unfold-bottom 0.42s 0.3s cubic-bezier(0.16, 0.72, 0.22, 1) forwards;
+}
+[data-theme="sill"] .flip-card.is-flipping .bottom-flap::after {
+  animation: sill-flap-shade-in 0.42s 0.3s cubic-bezier(0.16, 0.72, 0.22, 1) forwards;
+}
+
+/* 折叠/展开本体:纯 transform(与 base leaf-flip / gummy 同款铁律,
+   不再动画 filter/box-shadow——那正是亮度跳变与掉帧的根源) */
+@keyframes sill-fold-top {
+  from { transform: rotateX(0deg); }
+  to { transform: rotateX(-90deg); }
+}
+
+@keyframes sill-unfold-bottom {
+  from { transform: rotateX(90deg); }
+  to { transform: rotateX(0deg); }
+}
+
+@keyframes sill-flap-shade-out {
+  from { opacity: 0; }
+  to { opacity: 0.4; }
+}
+
+@keyframes sill-flap-shade-in {
+  from { opacity: 0.4; }
+  to { opacity: 0; }
+}
+
+/* ---- 黄铜分隔点 ---- */
+[data-theme="sill"] .separator {
+  position: relative;
+  height: var(--card-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(30px, 5vh, 58px);
+  opacity: 0.86;
+}
+
+[data-theme="sill"] .separator::before,
+[data-theme="sill"] .separator::after {
+  content: "";
+  width: clamp(10px, 1.2vw, 17px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #dec08a 0 8%, #a98554 35%, #5a4329 75%);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.38),
+    0 0 14px rgba(199, 145, 75, 0.06);
+}
+
+/* ---- 日期铭牌 ---- */
+[data-theme="sill"] .date-plaque {
+  position: relative;
+  z-index: 2;
+  height: clamp(48px, 6vh, 66px);
+  margin-top: clamp(8px, 1.3vh, 14px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  overflow: hidden;
+  transition:
+    height 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
+    margin 0.45s ease,
+    opacity 0.3s ease,
+    transform 0.45s ease;
+}
+
+[data-theme="sill"] .date-plaque::before,
+[data-theme="sill"] .date-plaque::after {
+  content: "";
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(202, 164, 104, 0.35));
+}
+[data-theme="sill"] .date-plaque::after {
+  background: linear-gradient(90deg, rgba(202, 164, 104, 0.35), transparent);
+}
+
+/* 关日期:卡片放大 + 铭牌折叠 */
+[data-theme="sill"] .clock-cabinet.no-date {
+  --card-h: clamp(205px, 27vh, 315px);
+}
+
+[data-theme="sill"] .clock-cabinet.no-date .date-plaque {
+  height: 0;
+  margin-top: 0;
+  opacity: 0;
+  transform: translateY(-7px);
+}
+
+[data-theme="sill"] .date-chip {
+  min-width: clamp(250px, 25vw, 380px);
+  height: clamp(36px, 4.5vh, 46px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  border-radius: 999px;
+  color: #d9c6a3;
+  font-size: clamp(12px, 1.05vw, 16px);
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.08)),
+    rgba(30, 21, 15, 0.48);
+  border: 1px solid rgba(194, 153, 92, 0.17);
+  box-shadow:
+    inset 0 0 18px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+/* ==================== 本项目 UI 的林间补充 ==================== */
+/* v5 原稿是纯展示页,没有设置菜单;按项目主题规范补齐控件细节
+   (面板/按钮/开关已由主题变量驱动,这里只补变量覆盖不到的 kbd) */
+[data-theme="sill"] kbd {
+  background: rgba(43, 26, 18, 0.55);
+  border-color: rgba(194, 153, 92, 0.32);
+  color: var(--paper);
+}
+
+/* ==================== 自适应(小窗/预览窗/竖屏) ==================== */
+@media (max-aspect-ratio: 4/3) {
+  [data-theme="sill"] {
+    --clock-w: min(90vw, 980px);
+    --clock-h: clamp(330px, 40vh, 450px);
+  }
+  [data-theme="sill"] .window {
+    left: 3vw;
+    width: 28vw;
+    opacity: 0.78;
+  }
+  [data-theme="sill"] .lamp { right: 4vw; opacity: 0.72; }
+  [data-theme="sill"] .mug,
+  [data-theme="sill"] .book-stack { opacity: 0.8; }
+}
+
+@media (max-width: 820px) {
+  [data-theme="sill"] {
+    --clock-w: 94vw;
+    --clock-h: clamp(315px, 43vh, 400px);
+    --card-h: clamp(170px, 24vh, 230px);
+  }
+  [data-theme="sill"] .top-beam { height: 58px; }
+  [data-theme="sill"] .window {
+    left: 1.5vw;
+    top: 10vh;
+    width: 38vw;
+    height: 43vh;
+    opacity: 0.5;
+  }
+  [data-theme="sill"] .lamp { display: none; }
+  [data-theme="sill"] .clock-wrap {
+    min-width: 0;
+    top: 49%;
+  }
+  [data-theme="sill"] .clock-cabinet {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  [data-theme="sill"] .time-row {
+    grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr) 18px minmax(0, 0.88fr);
+    gap: 3px;
+  }
+  [data-theme="sill"] .separator { gap: 28px; }
+  [data-theme="sill"] .date-chip { min-width: 0; padding: 0 18px; }
+  [data-theme="sill"] .brand-row .local-note { display: none; }
+  [data-theme="sill"] .mug,
+  [data-theme="sill"] .book-stack { display: none; }
+  [data-theme="sill"] .mantel { width: 96vw; }
+  [data-theme="sill"] .pine-edge { opacity: 0.42; }
+}
+
+@media (max-width: 540px) {
+  [data-theme="sill"] {
+    --clock-h: 370px;
+    --card-h: 190px;
+  }
+  [data-theme="sill"] .clock-wrap { top: 48%; }
+  [data-theme="sill"] .clock-cabinet { padding: 28px 13px 20px; }
+  [data-theme="sill"] .brand-row { padding: 0 8px; }
+  [data-theme="sill"] .num { font-size: clamp(30px, 10vw, 44px); }
+  [data-theme="sill"] .clock-cabinet.no-seconds .num { font-size: clamp(36px, 11.5vw, 52px); }
+  [data-theme="sill"] .separator::before,
+  [data-theme="sill"] .separator::after { width: 9px; }
+  [data-theme="sill"] .date-chip {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 0 12px;
+  }
+  [data-theme="sill"] .date-plaque { gap: 8px; }
+}
+
+@media (max-height: 650px) {
+  [data-theme="sill"] {
+    --clock-h: min(55vh, 355px);
+    --card-h: min(31vh, 205px);
+  }
+  [data-theme="sill"] .clock-wrap { top: 49%; }
+  [data-theme="sill"] .mantel { top: calc(49% + var(--clock-h) / 2 + 10px); }
+  [data-theme="sill"] .mug,
+  [data-theme="sill"] .book-stack { display: none; }
+  [data-theme="sill"] .window { top: 10vh; height: 50vh; }
+}
+
+/* 减弱动态:只作用于本主题的场景与钟柜,不波及项目 UI 过渡 */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="sill"] .cabin *,
+  [data-theme="sill"] .cabin *::before,
+  [data-theme="sill"] .cabin *::after,
+  [data-theme="sill"] .clock-wrap *,
+  [data-theme="sill"] .clock-wrap *::before,
+  [data-theme="sill"] .clock-wrap *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  [data-theme="sill"] .flip-card.is-flipping .top-flap,
+  [data-theme="sill"] .flip-card.is-flipping .bottom-flap { opacity: 0; }
 }
 
 :root {
