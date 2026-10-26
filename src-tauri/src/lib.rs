@@ -1650,7 +1650,7 @@ fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
                 .decorations(false)
                 .always_on_top(true)
                 .resizable(false)
-                // 先隐藏,定位到目标显示器后再 show,避免窗口在主屏闪现后跳移
+                // 先隐藏,定位并进全屏后再 show,避免窗口在主屏闪现后跳移
                 .visible(false)
                 .background_color(tauri::webview::Color(10, 10, 15, 255))
                 .initialization_script(init_script)
@@ -1658,12 +1658,14 @@ fn create_saver_windows(app: &tauri::AppHandle, init_script: &str) {
                 .inner_size(800.0, 600.0);
                 builder = builder.data_directory(webview_data_dir());
                 if let Ok(window) = builder.build() {
-                    // 精确定位到对应显示器(物理坐标,不受 DPI 缩放影响)
+                    // 与普通全屏窗口一致:物理定位 → 物理尺寸 → 进全屏 → show。
+                    // fullscreen 只在新窗初始化时进入一次,避免非全屏阴影内缩留下边缘缝隙。
                     let _ = window.set_position(tauri::PhysicalPosition::new(mon.x, mon.y));
                     let _ = window.set_size(tauri::PhysicalSize::new(
                         mon.width as u32,
                         mon.height as u32,
                     ));
+                    let _ = window.set_fullscreen(true);
                     let _ = window.show();
                 }
             }
